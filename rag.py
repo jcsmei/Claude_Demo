@@ -1,9 +1,11 @@
 """Answer questions from stored documents (retrieval-augmented generation)."""
 
+from pathlib import Path
+
 from llm import ask
 from store import add_documents, get_collection, search
 
-DATA_FOLDER = "data"
+DATA_FOLDER = Path(__file__).parent / "data"
 
 
 def build_prompt(question, chunks):
@@ -34,7 +36,7 @@ def answer(question, collection, client=None, k=3):
 if __name__ == "__main__":
     collection = get_collection()
     count = add_documents(collection, DATA_FOLDER)
-    print(f"Stored {count} chunks from '{DATA_FOLDER}'.\n")
+    print(f"Stored {count} chunks from '{DATA_FOLDER.name}'.\n")
 
     question = "What is this project's codename and when is the review?"
     result = answer(question, collection)

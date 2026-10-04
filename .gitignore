@@ -10,5 +10,8 @@
 # Chroma database - rebuilt from data/ by running: python rag.py
 chroma_db/
 
+# Log files written by the MCP server
+logs/
+
 # Python's auto-generated compiled files
 __pycache__/

@@ -4,7 +4,9 @@ from pathlib import Path
 
 import chromadb
 
-DB_PATH = "chroma_db"
+# Anchored to this file so it works whatever folder the program is
+# started from.
+DB_PATH = str(Path(__file__).parent / "chroma_db")
 COLLECTION_NAME = "demo_docs"
 DOCUMENT_SUFFIXES = {".md", ".txt"}
 

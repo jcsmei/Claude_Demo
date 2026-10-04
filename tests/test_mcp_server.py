@@ -54,7 +54,7 @@ def test_server_lists_its_tools():
             return await client.list_tools()
     names = {tool.name for tool in asyncio.run(run()).tools}
     assert names == {"search_documents", "ask_documents",
-                     "recent_commits"}
+                     "recent_commits", "query_license_data"}
 
 
 def test_search_documents_returns_the_best_passage():
@@ -120,6 +120,29 @@ def test_recent_commits_explains_a_failure(monkeypatch):
 
     assert result.is_error
     assert "rate limit was reached" in result.content[0].text
+
+
+def test_query_license_data_returns_the_result(monkeypatch):
+    query = {"sql": "SELECT SUM(drivers) AS total FROM driver_licenses",
+             "columns": ["total"], "rows": [[180648]],
+             "updated": "2026-10-04"}
+    monkeypatch.setattr(tools, "query_license_data", lambda sql: query)
+
+    result = call("query_license_data", {"sql": query["sql"]})
+
+    assert not result.is_error
+    assert result.structured_content == query
+
+
+def test_query_license_data_explains_rejected_sql(monkeypatch):
+    def rejecting(sql):
+        raise tools.QueryError("Only SELECT statements are allowed.")
+    monkeypatch.setattr(tools, "query_license_data", rejecting)
+
+    result = call("query_license_data", {"sql": "DELETE FROM x"})
+
+    assert result.is_error
+    assert "Only SELECT statements are allowed." in result.content[0].text
 
 
 def test_successful_call_is_logged(caplog):

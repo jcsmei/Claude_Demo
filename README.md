@@ -17,7 +17,9 @@ that ability to AI assistants as tools.
 | `llm.py` | Sends a question to a Groq model and returns the reply. |
 | `store.py` | Chunks documents, stores them in Chroma, searches them. |
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
-| `mcp_server.py` | Exposes `search_documents` and `ask_documents` as MCP tools, with logging. |
+| `tools.py` | Fetches live information from outside: the project's commits on GitHub, and taxi driver license counts from NYC Open Data. |
+| `chat.py` | A LangGraph graph that chooses the tool for each message, then answers with it. |
+| `mcp_server.py` | Exposes the search, ask, commit and data query tools to MCP clients, with logging. |
 | `app.py` | A password-protected Streamlit chat page that shows each answer with the passages it was drawn from. |
 | `data/` | The sample documents that get indexed. |
 | `tests/` | Automated tests. They use fakes, so they need no network or API key. |

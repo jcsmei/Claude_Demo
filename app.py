@@ -14,7 +14,7 @@ import groq
 import streamlit as st
 from dotenv import load_dotenv
 
-from chat import respond
+from chat import flow_diagram, respond
 from rag import DATA_FOLDER
 from tools import ToolFailure
 from store import DOCUMENT_SUFFIXES, add_documents, get_collection
@@ -30,11 +30,14 @@ EXAMPLE_QUESTIONS = (
     "Which language model writes the answers, and why that one?",
     "Who built this demo, and what is his background?",
     "What changed in the code most recently?",
+    "How many active medallion taxi drivers are there in New York?",
 )
 # Shown under each answer, so the viewer knows where it came from.
 SOURCE_LABELS = {
     "documents": "Source: the project's documents",
     "github": "Source: GitHub, the project's live commit history",
+    "nyc_data": ("Source: NYC Open Data, live counts of active "
+                 "medallion taxi driver licenses"),
 }
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")
@@ -116,8 +119,16 @@ def describe_error(error):
     if isinstance(error, ToolFailure):
         headline = f"A tool failed: {error}"
     elif isinstance(error, groq.RateLimitError):
-        headline = ("Generation failed: Groq's rate limit was reached. "
-                    "Wait a minute, then ask again.")
+        # Groq has a limit per minute and a limit per day, and names
+        # the one that was hit in its message.
+        if "per day" in str(error):
+            headline = ("Generation failed: this demo has used its "
+                        "daily allowance of Groq tokens. The allowance "
+                        "refills gradually over 24 hours, so please "
+                        "try again later.")
+        else:
+            headline = ("Generation failed: Groq's rate limit was "
+                        "reached. Wait a minute, then ask again.")
     elif isinstance(error, groq.AuthenticationError):
         headline = ("Generation failed: Groq rejected the app's API "
                     "key. Asking again will not help until the key "
@@ -167,6 +178,7 @@ def answer_question(question, history):
     return {"role": "assistant", "content": content,
             "passages": result["passages"],
             "commits": result.get("commits"),
+            "query": result.get("query"),
             "status": result["status"], "tool": result["tool"],
             "rewritten": rewritten}
 
@@ -187,6 +199,24 @@ def show_commits(commits):
             )
 
 
+def show_query(query):
+    """Show the SQL a data answer ran and the rows it returned."""
+    with st.expander(f"Query run on NYC Open Data ({len(query['rows'])} "
+                     "rows returned)"):
+        st.caption(
+            "The model wrote this SQL, and it ran on counts fetched "
+            "live from NYC Open Data (dataset jb3k-j3gp, last updated "
+            f"{query['updated']}). Only counts are fetched: no driver "
+            "names or license numbers. The model was given the rows "
+            "below and told to answer from them only."
+        )
+        st.code(query["sql"], language="sql")
+        st.dataframe(
+            [dict(zip(query["columns"], row)) for row in query["rows"]],
+            hide_index=True,
+        )
+
+
 def show_message(message):
     """Draw one chat message, with its retrieved passages if any."""
     with st.chat_message(message["role"]):
@@ -202,6 +232,9 @@ def show_message(message):
             st.caption(SOURCE_LABELS[message["tool"]])
         if message.get("commits"):
             show_commits(message["commits"])
+            return
+        if message.get("query"):
+            show_query(message["query"])
             return
         passages = message.get("passages")
         # An unclear message has no answer to trace back to passages.
@@ -263,6 +296,13 @@ def show_sidebar(remaining):
             "are in meaning. Lower is closer: 0 is identical, and "
             "near 2 is unrelated."
         )
+        st.header("How the bot decides")
+        st.caption(
+            "Each message goes through this LangGraph flow. Dashed "
+            "arrows are choices: which tool fits, and whether a "
+            "failed SQL query is retried."
+        )
+        st.graphviz_chart(flow_diagram())
         st.header("Documents")
         for path in sorted(DATA_FOLDER.iterdir()):
             if path.suffix.lower() in DOCUMENT_SUFFIXES:

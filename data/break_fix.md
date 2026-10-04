@@ -2,14 +2,15 @@
 
 ## What problems and bugs did the project run into?
 
-The project ran into thirteen problems worth recording: a breaking
+The project ran into fifteen problems worth recording: a breaking
 change in the MCP (Model Context Protocol) library, tool errors that hid their cause, a tool
 that returned no structured data, a full disk, a chat box that ignored
 the question limit, an unsupported Python version, a rejected idea for
 refusing questions, a retrieval miss, a wrong fact about the creator,
 a live app that searched old documents, questions that silently
-stopped working, answers that felt rigid, and follow-up questions that
-searched for the wrong thing. Each one is described in its own section
+stopped working, answers that felt rigid, follow-up questions that
+searched for the wrong thing, a dataset that held personal data, and
+SQL that returned wrong or invented answers. Each one is described in its own section
 in the STAR format.
 
 ## What is the STAR format used in the bug reports?
@@ -25,7 +26,7 @@ that order.
 Most of the problems were found by running the real system, not by
 the automated tests with fakes. Fakes prove the logic is right; only a
 live run proves the parts work together. The other lesson is that in
-RAG the search fails more often than the model: five of the thirteen
+RAG the search fails more often than the model: five of the fifteen
 problems were retrieval problems, which is why the project now has
 tests that check retrieval with real questions.
 
@@ -171,3 +172,24 @@ Inspecting the results showed it found general MCP sections but not
 the tools section. It was replaced by query rewriting: the model first
 rewrites the follow-up as a standalone question. Result: follow-ups
 are answered correctly, at the cost of one small extra model call.
+
+## Problem: the chosen dataset held personal data
+
+Situation: a public New York City dataset was chosen to show the bot
+querying outside data. Task: add it as a tool. Action: before building
+anything, the dataset was inspected. Its name suggested vehicles, but
+it listed about 180,000 individual drivers with names and license
+numbers. Result: the tool requests counts only from the city's API, so
+no personal data is downloaded, stored or shown. Lesson: look at the
+data before designing around it.
+
+## Problem: the SQL tool gave wrong and invented answers
+
+Situation: in a live check of the data tool, the model filtered on a
+value that was not in the data, so a query matched nothing and the bot
+reported "None"; another query returned invented text without reading
+any data. Task: make data answers trustworthy. Action: the column that
+invited the bad filter was removed, queries that read no data are
+rejected, an empty result triggers one corrected attempt, and
+questions about where the data comes from are sent to the documents.
+Result: the same questions return the correct numbers.

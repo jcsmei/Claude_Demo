@@ -18,13 +18,13 @@ list of inputs, so the assistant knows when and how to use it.
 
 ## What tools does the MCP server have?
 
-The MCP server has three tools: search_documents, ask_documents and
-recent_commits.
+The MCP server has four tools: search_documents, ask_documents,
+recent_commits and query_license_data.
 
 ## Where are the MCP tools defined?
 
-All three tools, search_documents, ask_documents and recent_commits,
-are defined in the file mcp_server.py. The server is named rag-demo.
+All four tools are defined in the file mcp_server.py. The server is
+named rag-demo.
 
 ## What does the search_documents tool do?
 
@@ -101,3 +101,13 @@ the reason, and any unexpected failure with its full traceback. The
 logging exists so that no tool call fails silently and so that
 problems can be traced afterwards, which also shows due diligence in a
 company setting.
+
+## What does the query_license_data tool do?
+
+The query_license_data tool runs one read-only SQL query on live
+counts of active New York City medallion taxi driver licenses, fetched
+from NYC Open Data. It returns the SQL that ran, the result's columns
+and rows, and the date of the data. It accepts only a single SELECT
+statement that reads the table, returns at most 50 rows, and stops a
+query that runs too long. The data holds counts only, with no names or
+license numbers.

@@ -1,5 +1,6 @@
 """Tools that fetch live information from outside the project."""
 
+import sqlite3
 import time
 
 import httpx
@@ -64,3 +65,111 @@ def recent_commits(limit=5, http_get=httpx.get):
     ]
     _cache["commits"] = (time.monotonic(), commits)
     return commits[:limit]
+
+
+NYC_DATA_URL = "https://data.cityofnewyork.us/resource/jb3k-j3gp.json"
+# The city refreshes this dataset once a day.
+NYC_DATA_CACHE_SECONDS = 6 * 3600
+MAX_ROWS = 50
+# A query is stopped after this many database steps, so that a badly
+# written one cannot keep the app busy.
+MAX_QUERY_STEPS = 1_000_000
+
+LICENSE_SCHEMA = """\
+Table driver_licenses: New York City medallion taxi drivers who hold an
+active license, counted by the month in which the license expires.
+- expiry_month TEXT: the month the licenses expire, as 'YYYY-MM'
+- expiry_year INTEGER: the year the licenses expire
+- drivers INTEGER: how many active drivers have a license that expires
+  in that month
+Every row is a medallion taxi driver license, so no filter on the type
+of license is needed. The total number of active drivers is
+SUM(drivers)."""
+LICENSE_TABLE = "driver_licenses"
+
+
+class QueryError(ToolFailure):
+    """A SQL query was rejected or failed; a corrected one may work."""
+
+
+def license_counts(http_get=httpx.get):
+    """Return counts of active NYC medallion taxi driver licenses.
+
+    The result is a dict with `rows`, each an (expiry_month,
+    expiry_year, drivers) tuple, and `updated`, the date
+    the city last refreshed the data.  Only counts are requested from
+    NYC Open Data: the drivers' names and license numbers in the
+    source dataset are never downloaded.
+    """
+    cached = _cache.get("licenses")
+    if cached and time.monotonic() - cached[0] < NYC_DATA_CACHE_SECONDS:
+        return cached[1]
+    params = {
+        "$select": ("date_trunc_ym(expiration_date) as month, "
+                    "count(*) as drivers, "
+                    "max(last_updated_date) as updated"),
+        "$group": "month",
+        "$order": "month",
+        "$limit": 5000,
+    }
+    try:
+        response = http_get(NYC_DATA_URL, params=params,
+                            timeout=TIMEOUT_SECONDS)
+    except httpx.HTTPError as error:
+        raise ToolFailure("NYC Open Data could not be reached.") from error
+    if response.status_code != 200:
+        raise ToolFailure(
+            f"NYC Open Data returned HTTP {response.status_code}."
+        )
+    items = [item for item in response.json() if item.get("month")]
+    data = {
+        "rows": [(item["month"][:7], int(item["month"][:4]),
+                  int(item["drivers"]))
+                 for item in items],
+        "updated": max((item.get("updated", "")[:10] for item in items),
+                       default=""),
+    }
+    _cache["licenses"] = (time.monotonic(), data)
+    return data
+
+
+def query_license_data(sql, http_get=httpx.get):
+    """Run one read-only SQL query on the driver license counts.
+
+    The table is described by `LICENSE_SCHEMA`.  Return a dict with
+    the `sql` that ran, the result's `columns` and `rows` (at most
+    `MAX_ROWS`), and `updated`, the date of the data.  Anything other
+    than a single SELECT statement that reads the table, and any SQL
+    error, raises `QueryError`.
+    """
+    statement = sql.strip().rstrip(";").strip()
+    if ";" in statement:
+        raise QueryError("Only one SQL statement is allowed.")
+    if not statement.lower().startswith(("select", "with")):
+        raise QueryError("Only SELECT statements are allowed.")
+    # A query that reads no data could only return text the model made
+    # up, such as SELECT 'some claim'.
+    if LICENSE_TABLE not in statement.lower():
+        raise QueryError(f"The query must read from {LICENSE_TABLE}.")
+    data = license_counts(http_get)
+    connection = sqlite3.connect(":memory:")
+    try:
+        connection.execute(
+            "CREATE TABLE driver_licenses (expiry_month TEXT, "
+            "expiry_year INTEGER, drivers INTEGER)"
+        )
+        connection.executemany(
+            "INSERT INTO driver_licenses VALUES (?, ?, ?)", data["rows"]
+        )
+        # Belt and braces: the database itself refuses any change.
+        connection.execute("PRAGMA query_only = ON")
+        connection.set_progress_handler(lambda: 1, MAX_QUERY_STEPS)
+        cursor = connection.execute(statement)
+        columns = [column[0] for column in cursor.description]
+        rows = [list(row) for row in cursor.fetchmany(MAX_ROWS)]
+    except sqlite3.Error as error:
+        raise QueryError(f"The SQL failed: {error}") from error
+    finally:
+        connection.close()
+    return {"sql": statement, "columns": columns, "rows": rows,
+            "updated": data["updated"]}

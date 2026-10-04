@@ -1,4 +1,14 @@
-"""Choose the tool that fits a message, then answer with it."""
+"""Choose the tool that fits a message, then answer with it.
+
+The flow is a LangGraph graph: one node chooses a tool, and the graph
+routes to the node for that tool.  Adding a tool means adding a node,
+an entry in `TOOL_GUIDE` and an edge.
+"""
+
+from typing import Any, TypedDict
+
+from langgraph.graph import END, START, StateGraph
+from langgraph.runtime import Runtime
 
 import rag
 import tools
@@ -9,16 +19,24 @@ from llm import ask
 TOOL_GUIDE = {
     "documents": (
         "everything else: how the project works, RAG, MCP, problems "
-        "that were fixed, the creator Jack Mei, greetings and unclear "
+        "that were fixed, the creator Jack Mei, where the bot's data "
+        "comes from and how its tools work, greetings and unclear "
         "messages"
     ),
     "github": (
         "the latest changes to the project's code: recent commits, "
         "updates, or what changed and when"
     ),
+    "nyc_data": (
+        "only for a count: how many active New York City medallion "
+        "taxi drivers there are, or how many licenses expire in a "
+        "given month or year"
+    ),
 }
 DEFAULT_TOOL = "documents"
 COMMITS_SHOWN = 10
+# A failed SQL query is rewritten once before the tool gives up.
+MAX_SQL_ATTEMPTS = 2
 
 
 def choose_tool(question, history=None, client=None):
@@ -73,8 +91,9 @@ def answer_from_github(question, standalone, history=None, client=None):
         "You answer questions about a demo project. Use only the list "
         "of its latest code changes below, newest first; each line is "
         "a date, a short ID and a summary. Explain conversationally "
-        "in plain language. Do not invent changes that are not "
-        "listed, and do not spell out abbreviations.\n\n"
+        "in plain language. Each summary is all that is known about "
+        "a change, so do not describe details beyond it, do not "
+        "invent changes, and do not spell out abbreviations.\n\n"
         f"Latest changes:\n{listing}\n\n"
         f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
         f"\n\nQuestion: {question}"
@@ -85,18 +104,212 @@ def answer_from_github(question, standalone, history=None, client=None):
             "search_query": standalone}
 
 
+def write_sql(question, failed_sql=None, error=None, client=None):
+    """Return a SQL statement that should answer `question`.
+
+    After a failed attempt, `failed_sql` and its `error` are shown to
+    the model so that it can correct the statement.
+    """
+    prompt = (
+        "Write one SQLite SELECT statement that answers the question "
+        "from the table below. Reply with the SQL only, with no "
+        "explanation.\n\n"
+        f"{tools.LICENSE_SCHEMA}\n\n"
+    )
+    if error:
+        prompt += (
+            f"Your previous statement was:\n{failed_sql}\n"
+            f"It failed with this error: {error}\n"
+            "Write a corrected statement.\n\n"
+        )
+    prompt += f"Question: {question}"
+    reply = ask(prompt, client=client)
+    # Models often wrap SQL in a Markdown code fence; drop the fence.
+    lines = [line for line in reply.strip().splitlines()
+             if not line.strip().startswith("```")]
+    return "\n".join(lines).strip()
+
+
+def answer_from_data(question, standalone, query, history=None,
+                     client=None):
+    """Answer `question` from the result of a license data query."""
+    table = "\n".join(
+        [" | ".join(query["columns"])]
+        + [" | ".join(str(value) for value in row)
+           for row in query["rows"]]
+    )
+    prompt = (
+        "You answer questions about New York City medallion taxi "
+        "driver licenses. Use only the query result below, which "
+        "comes from NYC Open Data and counts active drivers by the "
+        f"month their license expires. The data was last updated on "
+        f"{query['updated']}. Explain conversationally in plain "
+        "language, give the numbers exactly as they appear, and do "
+        "not add facts that are not in the result. If the result is "
+        "empty, say that the data has no matching rows and do not "
+        "guess a number.\n\n"
+        f"SQL that was run:\n{query['sql']}\n\n"
+        f"Result:\n{table}\n\n"
+        f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
+        f"\n\nQuestion: {question}"
+    )
+    return {"answer": ask(prompt, client=client), "status": "answered",
+            "answered": True, "tool": "nyc_data",
+            "sources": ["NYC Open Data"], "passages": [], "query": query,
+            "search_query": standalone}
+
+
+class ChatState(TypedDict, total=False):
+    """What the graph's nodes read and write while answering."""
+
+    question: str
+    history: list
+    tool: str
+    search_query: str
+    sql: str
+    sql_error: str | None
+    sql_attempts: int
+    query: dict
+    result: dict
+
+
+class ChatContext(TypedDict):
+    """What the nodes need but do not change."""
+
+    collection: Any
+    client: Any
+
+
+def choose_tool_node(state, runtime: Runtime[ChatContext]):
+    """Pick the tool and make the question standalone."""
+    tool, standalone = choose_tool(
+        state["question"], state["history"],
+        client=runtime.context["client"],
+    )
+    return {"tool": tool, "search_query": standalone}
+
+
+def documents_node(state, runtime: Runtime[ChatContext]):
+    """Answer from the project's documents (RAG)."""
+    result = rag.answer(
+        state["question"], runtime.context["collection"],
+        client=runtime.context["client"], history=state["history"],
+        search_query=state["search_query"],
+    )
+    result["tool"] = "documents"
+    return {"result": result}
+
+
+def github_node(state, runtime: Runtime[ChatContext]):
+    """Answer from the project's latest commits on GitHub."""
+    result = answer_from_github(
+        state["question"], state["search_query"], state["history"],
+        runtime.context["client"],
+    )
+    return {"result": result}
+
+
+def write_sql_node(state, runtime: Runtime[ChatContext]):
+    """Have the model write SQL, or correct a statement that failed."""
+    sql = write_sql(state["search_query"], state.get("sql"),
+                    state.get("sql_error"),
+                    client=runtime.context["client"])
+    return {"sql": sql}
+
+
+def run_sql_node(state, runtime: Runtime[ChatContext]):
+    """Run the SQL.  On a SQL error, record it for one more attempt.
+
+    A result with no values is also retried once, because it usually
+    means the model filtered on a value that is not in the data.
+    """
+    attempts = state.get("sql_attempts", 0) + 1
+    try:
+        query = tools.query_license_data(state["sql"])
+    except tools.QueryError as error:
+        if attempts >= MAX_SQL_ATTEMPTS:
+            raise tools.ToolFailure(
+                f"The data query failed after {attempts} attempts. {error}"
+            ) from error
+        return {"sql_error": str(error), "sql_attempts": attempts}
+    has_values = any(value is not None
+                     for row in query["rows"] for value in row)
+    if not has_values and attempts < MAX_SQL_ATTEMPTS:
+        return {"sql_error": ("The query returned no data. Check that "
+                              "any filter uses values the table holds."),
+                "sql_attempts": attempts}
+    return {"query": query, "sql_error": None, "sql_attempts": attempts}
+
+
+def data_answer_node(state, runtime: Runtime[ChatContext]):
+    """Answer from the rows the query returned."""
+    result = answer_from_data(
+        state["question"], state["search_query"], state["query"],
+        state["history"], runtime.context["client"],
+    )
+    return {"result": result}
+
+
+def build_graph():
+    """Return the compiled graph: choose a tool, then run its node."""
+    graph = StateGraph(ChatState, context_schema=ChatContext)
+    graph.add_node("choose_tool", choose_tool_node)
+    graph.add_node("documents", documents_node)
+    graph.add_node("github", github_node)
+    graph.add_node("write_sql", write_sql_node)
+    graph.add_node("run_sql", run_sql_node)
+    graph.add_node("data_answer", data_answer_node)
+    graph.add_edge(START, "choose_tool")
+    graph.add_conditional_edges(
+        "choose_tool", lambda state: state["tool"],
+        {"documents": "documents", "github": "github",
+         "nyc_data": "write_sql"},
+    )
+    graph.add_edge("documents", END)
+    graph.add_edge("github", END)
+    graph.add_edge("write_sql", "run_sql")
+    # A SQL error loops back for one corrected attempt.
+    graph.add_conditional_edges(
+        "run_sql",
+        lambda state: "retry" if state.get("sql_error") else "done",
+        {"retry": "write_sql", "done": "data_answer"},
+    )
+    graph.add_edge("data_answer", END)
+    return graph.compile()
+
+
+GRAPH = build_graph()
+
+
+def flow_diagram():
+    """Return the graph in Graphviz DOT format, for display.
+
+    It is generated from the compiled graph, so the picture cannot
+    drift from the code.  Dashed arrows are choices made by the model.
+    """
+    drawing = GRAPH.get_graph()
+    names = {"__start__": "message", "__end__": "answer"}
+    lines = ["digraph {", "  rankdir=LR;", "  node [shape=box];"]
+    for edge in drawing.edges:
+        source = names.get(edge.source, edge.source)
+        target = names.get(edge.target, edge.target)
+        style = " [style=dashed]" if edge.conditional else ""
+        lines.append(f'  "{source}" -> "{target}"{style};')
+    lines.append("}")
+    return "\n".join(lines)
+
+
 def respond(question, collection, history=None, client=None):
     """Answer `question` with whichever tool fits it.
 
     Return the same dict as `rag.answer`, plus `tool`: the name of the
     tool that produced the answer.  A github answer also has
-    `commits`, the list the answer was drawn from.  A tool that fails
-    raises `tools.ToolFailure`.
+    `commits`, the list the answer was drawn from, and an nyc_data
+    answer has `query`, the SQL that ran and its result.  A tool that
+    fails raises `tools.ToolFailure`.
     """
-    tool, standalone = choose_tool(question, history, client=client)
-    if tool == "github":
-        return answer_from_github(question, standalone, history, client)
-    result = rag.answer(question, collection, client=client,
-                        history=history, search_query=standalone)
-    result["tool"] = "documents"
-    return result
+    final = GRAPH.invoke(
+        {"question": question, "history": history or []},
+        context={"collection": collection, "client": client},
+    )
+    return final["result"]

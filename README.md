@@ -1,12 +1,15 @@
 # Claude_Demo: a RAG, MCP and LangGraph learning demo
 
-A chat bot that answers from three kinds of source and always shows
+A chat bot that answers from four kinds of source and always shows
 where each answer came from:
 
 - **Its own documents**, searched by meaning (RAG).
 - **GitHub**, called live for the project's latest code changes.
 - **NYC Open Data**, queried live with SQL for counts of taxi driver
   licenses.
+- **The web**, searched through Tavily, but only when the documents
+  do not cover a question. A web answer carries a warning that it
+  is not from the project's official documents.
 
 The same abilities are offered to AI assistants as tools through an
 MCP server. The documents in `data/` describe the project itself, so
@@ -32,6 +35,8 @@ along the way.
 flowchart LR
     message --> choose_tool
     choose_tool -.-> documents
+    documents -.->|not covered| web_search
+    web_search --> answer
     choose_tool -.-> github
     choose_tool -.-> write_sql
     write_sql --> run_sql
@@ -83,7 +88,10 @@ optional settings can be added to it: `GROQ_MODEL=<model id>` to use a
 different Groq model, and `MAX_QUESTIONS=<number>` to change the limit
 of 20 questions per visit.
 
-GitHub and NYC Open Data are called without a key.
+GitHub and NYC Open Data are called without a key. Web search is
+optional: add `TAVILY_API_KEY=your_key` (free from
+[tavily.com](https://tavily.com)) to turn it on. Without it, a
+question the documents do not cover is simply refused.
 
 ## Run
 
@@ -108,8 +116,10 @@ The page stays locked until the password is entered; with no
 - **Follow-ups work.** The bot keeps the last two exchanges, and
   rewrites a follow-up such as "what tools does it have?" into a
   standalone question before choosing a tool.
-- **It refuses what it cannot support.** A question the documents do
-  not cover is refused, not answered from the model's memory.
+- **It never answers from the model's memory.** If the documents do
+  not cover a question, the bot says so and searches the web,
+  listing the pages it used. Questions that name the project's
+  creator are never searched on the web; they are refused.
 - **Failures are explained**, with the stage that failed and the
   technical details.
 
@@ -119,6 +129,9 @@ The page stays locked until the password is entered; with no
   day for the default model. A chat message uses roughly 2,500 to
   4,000 tokens, so expect about 50 to 80 messages a day in total.
   Live testing draws on the same allowance as the deployed app.
+- **Tavily's** free tier has a monthly allowance of searches; each
+  web answer uses one. If it is used up, the bot falls back to its
+  normal refusal.
 - **Model fallback.** Groq counts limits per model, so when the
   default model is rate limited the same question goes to a second
   model, `openai/gpt-oss-120b`. Change it with
@@ -129,10 +142,22 @@ The page stays locked until the password is entered; with no
 
 ## Privacy
 
-The NYC dataset lists individual drivers by name. The data tool asks
-the city's API for counts only, grouped by the month a license
-expires, so no names or license numbers are downloaded, stored or
-shown.
+Personal information is protected by rules in the code, each covered
+by tests:
+
+- **Counts only from NYC Open Data.** The dataset lists individual
+  drivers by name; the data tool asks the city's API for counts
+  grouped by the month a license expires, so no names or license
+  numbers are downloaded, stored or shown.
+- **No author details from GitHub.** Commit author names and email
+  addresses are left out.
+- **No web searches about people.** A message that names the
+  project's creator, or contains an email address or a phone
+  number, is never sent to a web search; it is refused.
+
+A question is sent to Groq, and to Tavily when a web search runs.
+A person named without contact details cannot be detected, so the
+last rule is a safeguard, not a guarantee.
 
 ## Test
 

@@ -5,6 +5,7 @@ routes to the node for that tool.  Adding a tool means adding a node,
 an entry in `TOOL_GUIDE` and an edge.
 """
 
+import re
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -37,6 +38,26 @@ DEFAULT_TOOL = "documents"
 COMMITS_SHOWN = 10
 # A failed SQL query is rewritten once before the tool gives up.
 MAX_SQL_ATTEMPTS = 2
+
+# Shown at the start of an answer that came from the web, so the
+# reader is never left to assume it came from the documents.
+WEB_NOTICE = (
+    "The project's official documents do not cover this, so I searched "
+    "the web. What follows comes from web pages, not from the official "
+    "documents, and has not been verified by this project."
+)
+WEB_NOT_FOUND_MARKER = "NOT_FOUND"
+WEB_NOT_FOUND_MESSAGE = (
+    "Neither the project's documents nor a web search found an answer "
+    "to this question."
+)
+# A question that names the project's creator is never sent to a web
+# search: what the documents say about a person is all the bot says.
+PRIVATE_TERMS = ("jack", "mei")
+# Nor is a message that holds an email address or a phone-like number,
+# so the bot cannot be used to look a person up by contact details.
+EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+PHONE_PATTERN = re.compile(r"(?:\d[\s().-]*){9,}")
 
 
 def choose_tool(question, history=None, client=None):
@@ -159,6 +180,56 @@ def answer_from_data(question, standalone, query, history=None,
             "search_query": standalone}
 
 
+def web_search_allowed(text):
+    """Return True if `text` may be sent to a web search.
+
+    It may not when the search is not configured, when the text names
+    the project's creator, or when it holds an email address or a
+    phone-like number.
+    """
+    if not tools.web_search_available():
+        return False
+    if EMAIL_PATTERN.search(text) or PHONE_PATTERN.search(text):
+        return False
+    words = re.findall(r"[a-z]+", text.lower())
+    return not any(term in words for term in PRIVATE_TERMS)
+
+
+def answer_from_web(question, standalone, history=None, client=None):
+    """Answer `question` from a web search for `standalone`.
+
+    The answer begins with `WEB_NOTICE`.  If the results do not hold
+    the answer, the status is "not_covered".
+    """
+    results = tools.web_search(standalone)
+    listing = "\n\n".join(
+        f"[{number}] {result['title']} ({result['url']})\n"
+        f"{result['content']}"
+        for number, result in enumerate(results, start=1)
+    )
+    prompt = (
+        "Answer the question using only the web search results below. "
+        "Explain conversationally in plain language, in a few "
+        "sentences. Do not add facts that are not in the results. If "
+        "the results do not answer the question, reply with only the "
+        f"word {WEB_NOT_FOUND_MARKER}.\n\n"
+        f"Web search results:\n{listing or '(none)'}\n\n"
+        f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
+        f"\n\nQuestion: {question}"
+    )
+    reply = ask(prompt, client=client)
+    found = WEB_NOT_FOUND_MARKER not in reply
+    return {
+        "answer": (f"{WEB_NOTICE}\n\n{reply}" if found
+                   else WEB_NOT_FOUND_MESSAGE),
+        "status": "answered" if found else "not_covered",
+        "answered": found, "tool": "web",
+        "sources": [result["url"] for result in results] if found else [],
+        "passages": [], "web_results": results,
+        "search_query": standalone,
+    }
+
+
 class ChatState(TypedDict, total=False):
     """What the graph's nodes read and write while answering."""
 
@@ -250,6 +321,32 @@ def data_answer_node(state, runtime: Runtime[ChatContext]):
     return {"result": result}
 
 
+def web_search_node(state, runtime: Runtime[ChatContext]):
+    """Answer from the web when the documents did not cover it.
+
+    If the web search itself fails, the documents' refusal is kept and
+    the failure is added to it, so the visitor is not shown an error.
+    """
+    try:
+        result = answer_from_web(
+            state["question"], state["search_query"], state["history"],
+            runtime.context["client"],
+        )
+    except tools.ToolFailure as error:
+        result = dict(state["result"])
+        result["answer"] += f" A web search was tried but failed: {error}"
+    return {"result": result}
+
+
+def after_documents(state):
+    """Decide whether a documents answer needs a web search."""
+    asked = f"{state['question']} {state['search_query']}"
+    if (state["result"]["status"] == "not_covered"
+            and web_search_allowed(asked)):
+        return "search the web"
+    return "done"
+
+
 def build_graph():
     """Return the compiled graph: choose a tool, then run its node."""
     graph = StateGraph(ChatState, context_schema=ChatContext)
@@ -259,13 +356,19 @@ def build_graph():
     graph.add_node("write_sql", write_sql_node)
     graph.add_node("run_sql", run_sql_node)
     graph.add_node("data_answer", data_answer_node)
+    graph.add_node("web_search", web_search_node)
     graph.add_edge(START, "choose_tool")
     graph.add_conditional_edges(
         "choose_tool", lambda state: state["tool"],
         {"documents": "documents", "github": "github",
          "nyc_data": "write_sql"},
     )
-    graph.add_edge("documents", END)
+    # The web is searched only when the documents do not cover it.
+    graph.add_conditional_edges(
+        "documents", after_documents,
+        {"search the web": "web_search", "done": END},
+    )
+    graph.add_edge("web_search", END)
     graph.add_edge("github", END)
     graph.add_edge("write_sql", "run_sql")
     # A SQL error loops back for one corrected attempt.
@@ -304,9 +407,11 @@ def respond(question, collection, history=None, client=None):
 
     Return the same dict as `rag.answer`, plus `tool`: the name of the
     tool that produced the answer.  A github answer also has
-    `commits`, the list the answer was drawn from, and an nyc_data
-    answer has `query`, the SQL that ran and its result.  A tool that
-    fails raises `tools.ToolFailure`.
+    `commits`, the list the answer was drawn from, an nyc_data
+    answer has `query`, the SQL that ran and its result, and a web
+    answer has `web_results`.  A tool that fails raises
+    `tools.ToolFailure`, except the web search, whose failure is added
+    to the documents' refusal.
     """
     final = GRAPH.invoke(
         {"question": question, "history": history or []},

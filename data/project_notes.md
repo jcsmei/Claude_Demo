@@ -53,7 +53,9 @@ itself and why each decision was made, the problems that were found
 and fixed, and Jack Mei, its creator. You can also ask two things it
 answers from live sources: what changed in the code recently, from
 GitHub, and how many New York City medallion taxi drivers hold an
-active license and when those licenses expire, from NYC Open Data.
+active license and when those licenses expire, from NYC Open Data. A
+general question outside all of these is answered from a web search,
+and the bot says so.
 
 ## What are the parts of this project?
 
@@ -195,9 +197,10 @@ For every message, the language model first chooses one of three
 tools: the project's documents, GitHub for questions about recent code
 changes, or NYC Open Data for counts of taxi driver licenses. The same
 call rewrites a follow-up into a standalone question. The chosen tool
-then fetches its information and the model answers from it. Each
-answer names its source underneath, so the reader always knows where
-it came from.
+then fetches its information and the model answers from it. If the
+documents do not cover a question, a fourth tool, a web search, is
+tried. Each answer names its source underneath, so the reader always
+knows where it came from.
 
 ## Can the bot tell me what changed in the code recently?
 
@@ -254,13 +257,13 @@ The page shows the SQL and the rows under each answer.
 ## Can the bot reach data in more than one place?
 
 Yes. In a company, information lives in many systems, and this demo
-shows the same idea on a small scale. The bot draws on three sources:
+shows the same idea on a small scale. The bot draws on four sources:
 its own documents, searched by meaning; GitHub, called live for recent
-code changes; and NYC Open Data, queried live with SQL. A web search
-tool is planned as a fourth, to be used only when the documents do not
+code changes; NYC Open Data, queried live with SQL; and the web,
+searched through a service named Tavily when the documents do not
 cover a question.
 
-## What happens when the language model's allowance runs out?
+## What happens when the tokens run out and the model's allowance is used up?
 
 Groq counts its limits separately for each model. When the main model,
 openai/gpt-oss-20b, is rate limited, the bot sends the same question
@@ -270,3 +273,54 @@ minutes, so that later questions do not each wait on a request that
 would be refused. Every switch is written to the log. If both models
 are rate limited, the page says so. This was chosen over a mode that
 only shows search results, because the bot should stay able to answer.
+
+## When does the bot search the web?
+
+Only when its own documents do not cover a question. The bot always
+tries the documents first, and they are never overridden by the web.
+If they have no answer, it searches the web through Tavily, a search
+service built for AI applications. A web answer is marked three ways:
+a highlighted warning that it comes from web pages and not from the
+project's official documents, a source line naming the web search, and
+a list of the pages used, with links. Web pages are not verified by
+this project.
+
+## Why are questions about the creator never searched on the web?
+
+A question that names Jack Mei, the project's creator, is never sent
+to a web search. What the documents say about him is all the bot will
+say, so a question such as his phone number is refused instead of
+looked up online. This is a deliberate privacy rule in the code, not a
+choice left to the model.
+
+## How does the bot protect personal information and PII?
+
+Five safeguards protect personal information. The taxi data holds
+counts only: driver names and license numbers are never downloaded.
+The GitHub tool leaves out author names and email addresses. A
+question that names the project's creator is never sent to a web
+search. Nor is a message that contains an email address or a phone
+number, so the bot cannot be used to look a person up. And the
+creator's own phone number and email are not in the documents;
+LinkedIn is the only contact route. These are rules in the code,
+checked by automated tests.
+
+## What is sent to outside services when I ask a question?
+
+Your question and the passages retrieved for it are sent to Groq,
+which runs the language model. If the documents do not cover the
+question and a web search is allowed, the question is also sent to
+Tavily, the search service. Questions about code changes call GitHub,
+and questions about taxi drivers call NYC Open Data, but neither is
+sent your question. The conversation is kept only for the current
+visit and is not stored afterwards, apart from the hosting service's
+own logs.
+
+## How does the bot stay usable when something fails?
+
+The bot is built to keep answering. If the main language model is rate
+limited, a second model takes over. If a SQL query fails or returns
+nothing, it is corrected once. If the web search is unavailable, the
+visitor gets the normal refusal with a note instead of an error. If a
+tool fails outright, the page explains which stage failed and stays
+usable for the next question.

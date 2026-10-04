@@ -191,6 +191,36 @@ def test_data_answer_shows_its_source_sql_and_rows(app, monkeypatch):
     ]
 
 
+def test_web_answer_shows_its_source_and_results(app, monkeypatch):
+    results = [{"title": "Taxi medallion", "content": "A permit.",
+                "url": "https://example.com/medallion"}]
+
+    def web_answer(question, collection, history=None):
+        return {"answer": f"{chat.WEB_NOTICE}\n\nA medallion is a permit.",
+                "status": "answered", "answered": True, "tool": "web",
+                "sources": ["https://example.com/medallion"],
+                "passages": [], "web_results": results,
+                "search_query": question}
+    monkeypatch.setattr(chat, "respond", web_answer)
+
+    ask(log_in(app), "what are medallions?")
+
+    assert not app.exception
+    reply = app.chat_message[1]
+    # The notice is a highlighted box, and is not repeated in the answer.
+    assert reply.warning[0].value == chat.WEB_NOTICE
+    assert reply.markdown[0].value == "A medallion is a permit."
+    captions = " ".join(caption.value for caption in reply.caption)
+    assert ("Source: a web search (Tavily), not the project's official "
+            "documents") in captions
+    assert "not the project's official documents" in captions
+    assert reply.expander[0].label == "Web results (1)"
+    assert reply.markdown[1].value == (
+        "**1. [Taxi medallion](https://example.com/medallion)**"
+    )
+    assert reply.text[0].value == "A permit."
+
+
 def test_sidebar_shows_the_decision_flow(app):
     log_in(app)
     headers = [header.value for header in app.sidebar.header]

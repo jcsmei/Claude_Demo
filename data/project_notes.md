@@ -47,15 +47,15 @@ project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about five subjects in its documents: how RAG works, what
-MCP is and which tools the project's MCP server offers, the project
-itself and why each decision was made, the problems that were found
-and fixed, and Jack Mei, its creator. You can also ask two things it
-answers from live sources: what changed in the code recently, from
-GitHub, and how many New York City medallion taxi drivers hold an
-active license and when those licenses expire, from NYC Open Data. A
-general question outside all of these is answered from a web search,
-and the bot says so.
+You can ask about six subjects in its documents: how RAG works, what
+MCP is and which tools the project's MCP server offers, how LangGraph
+directs the bot's decisions, the project itself and why each decision
+was made, the problems that were found and fixed, and Jack Mei, its
+creator. You can also ask two things it answers from live sources:
+what changed in the code recently, from GitHub, and how many New York
+City medallion taxi drivers hold an active license and when those
+licenses expire, from NYC Open Data. A general question outside all of
+these is answered from a web search, and the bot says so.
 
 ## What are the parts of this project?
 
@@ -209,16 +209,6 @@ answered from the project's live commit history on GitHub, not from
 the documents. The answer lists the commits it was drawn from, each
 with a link.
 
-## Does the project use LangGraph, and why?
-
-Yes. The decision flow in the file chat.py is a LangGraph graph: one
-node chooses a tool, and the graph routes to the nodes for that tool.
-The project started in plain Python, because the flow was a straight
-line: search, then answer. LangGraph was adopted when the flow gained
-branches and a retry loop, which is what a graph library is for. The
-page shows a diagram that is generated from the graph itself, so the
-picture cannot drift from the code.
-
 ## Where does the taxi driver data come from?
 
 The taxi driver numbers come from NYC Open Data, the City of New
@@ -276,14 +266,15 @@ only shows search results, because the bot should stay able to answer.
 
 ## When does the bot search the web?
 
-Only when its own documents do not cover a question. The bot always
-tries the documents first, and they are never overridden by the web.
-If they have no answer, it searches the web through Tavily, a search
-service built for AI applications. A web answer is marked three ways:
-a highlighted warning that it comes from web pages and not from the
-project's official documents, a source line naming the web search, and
-a list of the pages used, with links. Web pages are not verified by
-this project.
+Only when its own documents do not cover a general question. The bot
+always tries the documents first, and they are never overridden by the
+web. A question about this project itself is never searched on the
+web, because the web knows nothing about this project; if the
+documents do not cover it, the bot says so. A web answer is marked
+three ways: a highlighted warning that it comes from web pages and not
+from the project's official documents, a source line naming the web
+search, and a list of the pages used, with links. Web pages are not
+verified by this project.
 
 ## Why are questions about the creator never searched on the web?
 

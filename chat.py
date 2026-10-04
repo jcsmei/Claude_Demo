@@ -54,6 +54,14 @@ WEB_NOT_FOUND_MESSAGE = (
 # A question that names the project's creator is never sent to a web
 # search: what the documents say about a person is all the bot says.
 PRIVATE_TERMS = ("jack", "mei")
+# Nor is a question about this project itself.  The web knows nothing
+# about it, so a web answer could only describe some other project.
+PROJECT_TERMS = (
+    "rag-demo", "rag demo", "this project", "the project's", "this demo",
+    "the demo", "this bot", "the bot", "this app", "the app",
+    "this chat", "this server", "mcp_server", "your tools",
+    "your documents", "your code",
+)
 # Nor is a message that holds an email address or a phone-like number,
 # so the bot cannot be used to look a person up by contact details.
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
@@ -184,14 +192,17 @@ def web_search_allowed(text):
     """Return True if `text` may be sent to a web search.
 
     It may not when the search is not configured, when the text names
-    the project's creator, or when it holds an email address or a
-    phone-like number.
+    the project's creator, when it asks about this project itself, or
+    when it holds an email address or a phone-like number.
     """
     if not tools.web_search_available():
         return False
     if EMAIL_PATTERN.search(text) or PHONE_PATTERN.search(text):
         return False
-    words = re.findall(r"[a-z]+", text.lower())
+    lowered = text.lower()
+    if any(term in lowered for term in PROJECT_TERMS):
+        return False
+    words = re.findall(r"[a-z]+", lowered)
     return not any(term in words for term in PRIVATE_TERMS)
 
 
@@ -210,8 +221,11 @@ def answer_from_web(question, standalone, history=None, client=None):
     prompt = (
         "Answer the question using only the web search results below. "
         "Explain conversationally in plain language, in a few "
-        "sentences. Do not add facts that are not in the results. If "
-        "the results do not answer the question, reply with only the "
+        "sentences. Do not add facts that are not in the results. The "
+        "results are general web pages that know nothing about the "
+        "demo project in the conversation, so do not use them to say "
+        "anything about that project, its code or its tools. If the "
+        "results do not answer the question, reply with only the "
         f"word {WEB_NOT_FOUND_MARKER}.\n\n"
         f"Web search results:\n{listing or '(none)'}\n\n"
         f"Conversation so far:\n{rag.format_history(history) or '(none)'}"

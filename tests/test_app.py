@@ -72,6 +72,16 @@ def ask(app, question):
     return app
 
 
+def test_welcome_explains_the_demo_before_login(app):
+    app.run()
+    assert app.title[0].value == "Jack Mei: RAG, LangGraph and MCP Demo"
+    welcome = app.markdown[0].value
+    assert "built by" in welcome and "Jack Mei" in welcome
+    assert "Built with Claude Code" in welcome
+    for term in ("**RAG**", "**LangGraph:**", "**MCP**"):
+        assert term in welcome
+
+
 def test_page_is_locked_before_login(app):
     app.run()
     assert not app.exception

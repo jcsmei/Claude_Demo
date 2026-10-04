@@ -2,7 +2,7 @@
 
 ## What problems and bugs did the project run into?
 
-The project ran into sixteen problems worth recording: a breaking
+The project ran into seventeen problems worth recording: a breaking
 change in the MCP (Model Context Protocol) library, tool errors that hid their cause, a tool
 that returned no structured data, a full disk, a chat box that ignored
 the question limit, an unsupported Python version, a rejected idea for
@@ -10,8 +10,9 @@ refusing questions, a retrieval miss, a wrong fact about the creator,
 a live app that searched old documents, questions that silently
 stopped working, answers that felt rigid, follow-up questions that
 searched for the wrong thing, a dataset that held personal data, SQL
-that returned wrong or invented answers, and testing that used up the
-daily allowance of the language model. Each one is described in its own section
+that returned wrong or invented answers, testing that used up the
+daily allowance of the language model, and a web answer that made
+false claims about the project. Each one is described in its own section
 in the STAR format.
 
 ## What is the STAR format used in the bug reports?
@@ -27,7 +28,7 @@ that order.
 Most of the problems were found by running the real system, not by
 the automated tests with fakes. Fakes prove the logic is right; only a
 live run proves the parts work together. The other lesson is that in
-RAG the search fails more often than the model: five of the sixteen
+RAG the search fails more often than the model: five of the seventeen
 problems were retrieval problems, which is why the project now has
 tests that check retrieval with real questions.
 
@@ -207,3 +208,16 @@ refilled. Three changes followed: live checks are rationed to a few
 messages per change, the bot switches to a second model when the first
 is rate limited, and the page explains the daily limit. Lesson: read a
 service's limits before testing against a shared account.
+
+## Problem: a web answer made false claims about the project
+
+Situation: the creator asked whether the project could call tools on a
+second bot. The documents did not cover it, so the bot searched the
+web and answered that the project includes an MCP client. It does not:
+the web pages described other projects, and the model presented them
+as facts about this one. Task: stop web content being passed off as
+project facts. Action: questions about the project itself are no
+longer sent to web search, the model is told web pages know nothing
+about this project, and the missing answers were added to the
+documents. Result: the same question is answered correctly from the
+documents.

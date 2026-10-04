@@ -154,6 +154,10 @@ by tests:
 - **No web searches about people.** A message that names the
   project's creator, or contains an email address or a phone
   number, is never sent to a web search; it is refused.
+- **No web searches about the project itself.** The web knows
+  nothing about this project, so such a question is answered from
+  the documents or refused, never from web pages about other
+  projects.
 
 A question is sent to Groq, and to Tavily when a web search runs.
 A person named without contact details cannot be detected, so the
@@ -202,9 +206,11 @@ or removed text are replaced, not duplicated. Start each topic with a
 
 ## How it was built, and what went wrong
 
-Two of the documents are worth reading directly:
+Three of the documents are worth reading directly:
 
 - [data/project_notes.md](data/project_notes.md): what the project is,
   how it was built, and the reason behind each decision.
 - [data/break_fix.md](data/break_fix.md): every problem found along
   the way, each told as Situation, Task, Action, Result.
+- [data/langgraph.md](data/langgraph.md): LangGraph in plain
+  language, and how RAG, MCP and LangGraph fit together.

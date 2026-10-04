@@ -314,8 +314,11 @@ def test_respond_does_not_search_the_web_when_documents_answer(
     "who owns the email jane.doe@example.com?",
     "whose number is 774-555-0123?",
     "look up (212) 555 0199",
+    "can I use rag-demo to call tools on another bot?",
+    "does this project have an MCP client?",
+    "what database does the bot use?",
 ])
-def test_respond_never_searches_the_web_for_personal_details(
+def test_respond_never_searches_the_web_for_personal_or_project_details(
         collection, monkeypatch, question):
     searched = enable_web_search(monkeypatch)
     client = FakeClient(NOT_COVERED_REPLIES)
@@ -376,6 +379,17 @@ def test_ordinary_questions_may_be_searched_on_the_web(
         monkeypatch, question):
     monkeypatch.setattr(tools, "web_search_available", lambda: True)
     assert chat.web_search_allowed(question)
+
+
+def test_web_prompt_forbids_claims_about_the_project(monkeypatch):
+    enable_web_search(monkeypatch)
+    client = FakeClient("A medallion is a permit.")
+
+    chat.answer_from_web("what are medallions?", "what are medallions?",
+                         client=client)
+
+    sent = client.received["messages"][0]["content"]
+    assert "know nothing about the demo project" in sent
 
 
 def test_web_notice_says_the_answer_is_not_from_the_documents():

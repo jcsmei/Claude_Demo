@@ -24,14 +24,37 @@ logger = logging.getLogger("rag_demo.app")
 
 DEFAULT_MAX_QUESTIONS = "20"
 EXAMPLE_QUESTIONS = (
+    "Who built this demo, and what is his background?",
     "What is this chat bot, and how does it know about itself?",
-    "What is a chunk, and why are documents split into chunks?",
+    "How do RAG, MCP and LangGraph fit together in this project?",
     "What tools does the MCP server have?",
     "Which language model writes the answers, and why that one?",
-    "Who built this demo, and what is his background?",
     "What changed in the code most recently?",
     "How many active medallion taxi drivers are there in New York?",
 )
+PAGE_TITLE = "Jack Mei: RAG, LangGraph and MCP Demo"
+# The first thing a visitor reads, written for someone non-technical.
+WELCOME = """\
+**What this is:** a working AI assistant built by
+[Jack Mei](https://www.linkedin.com/in/jcsmei209/) to demonstrate three
+techniques used in AI systems. Ask it how it works, how it
+was built, or about Jack's background.
+
+- **RAG** (retrieval-augmented generation): the assistant looks the
+  answer up in a set of trusted documents before it replies, instead
+  of answering from memory. That keeps answers accurate and traceable.
+- **MCP** (Model Context Protocol): a standard plug that lets other AI
+  assistants use this one's tools.
+- **LangGraph:** a decision flow that picks the right source for each
+  question: the documents, live data from GitHub and New York City, or
+  a web search.
+
+Every answer shows where it came from, so nothing has to be taken on
+trust.
+
+Built with Claude Code, an AI coding assistant, with Jack as the
+architect.
+"""
 # Shown under each answer, so the viewer knows where it came from.
 SOURCE_LABELS = {
     "documents": "Source: the project's documents",
@@ -340,14 +363,9 @@ def show_sidebar(remaining):
         st.metric("Questions left this session", remaining)
 
 
-st.set_page_config(page_title="RAG demo")
-st.title("Ask the documents")
-st.caption(
-    "A retrieval-augmented generation (RAG) demo: answers come from "
-    "the project's documents and two live sources, GitHub and NYC "
-    "Open Data, not from the model's memory. If the documents do not "
-    "cover a question, the bot says so and searches the web."
-)
+st.set_page_config(page_title=PAGE_TITLE)
+st.title(PAGE_TITLE)
+st.markdown(WELCOME)
 require_password()
 
 max_questions = int(get_setting("MAX_QUESTIONS", DEFAULT_MAX_QUESTIONS))

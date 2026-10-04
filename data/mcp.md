@@ -111,3 +111,28 @@ and rows, and the date of the data. It accepts only a single SELECT
 statement that reads the table, returns at most 50 rows, and stops a
 query that runs too long. The data holds counts only, with no names or
 license numbers.
+
+## Can this project call tools on another MCP server or another bot?
+
+No. This project contains an MCP server only, named rag-demo. It does
+not contain an MCP client. A server offers tools; a client calls them.
+So rag-demo can be called by others, but it cannot call tools on a
+second bot's MCP server. To do that, an MCP client would have to be
+added to this project, for example to the chat page, and that has not
+been built.
+
+## Can another bot or AI assistant use this project's tools?
+
+Yes, if that bot is an MCP client. Any assistant that speaks MCP can
+start the rag-demo server and call its four tools, which is what
+Claude Code does. The direction matters: the other bot connects to
+rag-demo as a client. Running a second MCP server on the other bot
+would not connect the two, because two servers do not call each other.
+
+## Is the MCP server a web service?
+
+No. The MCP server in this project is a local program, not a web
+service. The client starts it with the command "python mcp_server.py"
+and exchanges messages with it over standard input and output. It does
+not listen on a network port, so it cannot be reached over the
+internet.

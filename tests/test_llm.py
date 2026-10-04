@@ -16,6 +16,7 @@ def test_ask_sends_the_question_and_model():
     client = FakeClient("ok")
     ask("What is MCP?", client=client, model="test-model")
     assert client.received["model"] == "test-model"
+    assert client.received["temperature"] == 0
     assert client.received["messages"] == [
         {"role": "user", "content": "What is MCP?"}
     ]

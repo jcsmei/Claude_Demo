@@ -23,14 +23,22 @@ PASSAGES = [{"text": "Mars is called the red planet.",
              "source": "space.txt", "distance": 0.4321}]
 
 
-def fake_answer(question, collection):
-    return {"answer": "Mars.", "answered": True,
-            "sources": ["space.txt"], "passages": PASSAGES}
+def fake_answer(question, collection, history=None):
+    return {"answer": "Mars.", "status": "answered", "answered": True,
+            "sources": ["space.txt"], "passages": PASSAGES,
+            "search_query": question}
 
 
-def fake_refusal(question, collection):
-    return {"answer": rag.NOT_COVERED_MESSAGE, "answered": False,
-            "sources": [], "passages": PASSAGES}
+def fake_refusal(question, collection, history=None):
+    return {"answer": rag.NOT_COVERED_MESSAGE, "status": "not_covered",
+            "answered": False, "sources": [], "passages": PASSAGES,
+            "search_query": question}
+
+
+def fake_unclear(question, collection, history=None):
+    return {"answer": rag.UNCLEAR_MESSAGE, "status": "unclear",
+            "answered": False, "sources": [], "passages": PASSAGES,
+            "search_query": question}
 
 
 def fake_collection():
@@ -119,6 +127,75 @@ def test_unanswerable_question_is_explained(app, monkeypatch):
     assert len(reply.error) == 0
 
 
+def test_unclear_message_gets_help_without_passages(app, monkeypatch):
+    monkeypatch.setattr(rag, "answer", fake_unclear)
+
+    ask(log_in(app), "hi")
+
+    assert not app.exception
+    reply = app.chat_message[1]
+    assert reply.markdown[0].value == rag.UNCLEAR_MESSAGE
+    assert len(reply.expander) == 0
+
+
+def test_earlier_conversation_is_passed_with_each_question(
+        app, monkeypatch):
+    histories = []
+
+    def recording_answer(question, collection, history=None):
+        histories.append([(message["role"], message["content"])
+                          for message in history])
+        return fake_answer(question, collection)
+    monkeypatch.setattr(rag, "answer", recording_answer)
+    log_in(app)
+
+    ask(app, "Which is the red planet?")
+    ask(app, "I don't understand")
+
+    assert histories == [
+        [],
+        [("user", "Which is the red planet?"), ("assistant", "Mars.")],
+    ]
+
+
+def test_rewritten_follow_up_is_shown_with_the_passages(
+        app, monkeypatch):
+    def rewriting_answer(question, collection, history=None):
+        result = fake_answer(question, collection)
+        result["search_query"] = "Which planet is the red planet?"
+        return result
+    monkeypatch.setattr(rag, "answer", rewriting_answer)
+
+    ask(log_in(app), "which one is it?")
+
+    captions = [caption.value for caption in app.chat_message[1].caption]
+    assert any('"Which planet is the red planet?"' in caption
+               for caption in captions)
+
+
+def test_unchanged_question_shows_no_rewrite_note(app):
+    ask(log_in(app), "Which is the red planet?")
+    captions = [caption.value for caption in app.chat_message[1].caption]
+    assert not any("rewritten" in caption for caption in captions)
+
+
+def test_failed_answers_are_left_out_of_the_conversation(
+        app, monkeypatch):
+    fail_with(monkeypatch, RuntimeError("database file is missing"))
+    log_in(app)
+    ask(app, "First question?")
+
+    histories = []
+
+    def recording_answer(question, collection, history=None):
+        histories.append([message["content"] for message in history])
+        return fake_answer(question, collection)
+    monkeypatch.setattr(rag, "answer", recording_answer)
+    ask(app, "Second question?")
+
+    assert histories == [["First question?"]]
+
+
 def test_clicking_an_example_question_asks_it(app):
     log_in(app)
     example = app.button[0].label
@@ -180,7 +257,7 @@ def test_chat_is_disabled_at_the_question_limit(app):
 
 def fail_with(monkeypatch, error):
     """Make every question fail with `error`."""
-    def broken(question, collection):
+    def broken(question, collection, history=None):
         raise error
     monkeypatch.setattr(rag, "answer", broken)
 

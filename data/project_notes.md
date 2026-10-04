@@ -167,3 +167,12 @@ again.
 Python 3.12, Chroma 1.5.9 as the vector database, the Groq SDK 1.7.0
 for the language model, the MCP Python SDK 2.3.0 for the server,
 Streamlit 1.65.0 for the chat page, and pytest for the tests.
+
+## Is there a rate limit on questions?
+
+Yes. Besides the limit of 20 questions per visit, the project's Groq
+account allows 8,000 tokens per minute on its free tier. A question
+uses roughly 1,100 to 1,500 tokens, mostly the retrieved passages, so
+about six questions per minute can be answered across all visitors.
+Beyond that the page says the rate limit was reached and asks the
+visitor to wait a minute.

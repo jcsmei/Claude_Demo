@@ -11,18 +11,24 @@ EMBEDDING_SIZE = 64
 class FakeClient:
     """Mimic the part of the Groq client that ask() uses.
 
-    The keyword arguments of the last call are kept in `received`.
+    `reply` is the text to return, or a list of texts to return one
+    per call.  The keyword arguments of the last call are kept in
+    `received`, and those of every call in `calls`.
     """
 
     def __init__(self, reply):
-        self.reply = reply
+        self.replies = [reply] if isinstance(reply, str) else list(reply)
         self.received = None
+        self.calls = []
         completions = SimpleNamespace(create=self._create)
         self.chat = SimpleNamespace(completions=completions)
 
     def _create(self, **kwargs):
         self.received = kwargs
-        message = SimpleNamespace(content=self.reply)
+        self.calls.append(kwargs)
+        # The last reply is repeated if there are more calls than replies.
+        reply = self.replies[min(len(self.calls), len(self.replies)) - 1]
+        message = SimpleNamespace(content=reply)
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
 

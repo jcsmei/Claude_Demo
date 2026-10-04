@@ -2,14 +2,15 @@
 
 ## What problems and bugs did the project run into?
 
-The project ran into eleven problems worth recording: a breaking
+The project ran into thirteen problems worth recording: a breaking
 change in the MCP library, tool errors that hid their cause, a tool
 that returned no structured data, a full disk, a chat box that ignored
 the question limit, an unsupported Python version, a rejected idea for
 refusing questions, a retrieval miss, a wrong fact about the creator,
-a live app that searched old documents, and questions that silently
-stopped working. Each one is described in its own section in the STAR
-format.
+a live app that searched old documents, questions that silently
+stopped working, answers that felt rigid, and follow-up questions that
+searched for the wrong thing. Each one is described in its own section
+in the STAR format.
 
 ## What is the STAR format used in the bug reports?
 
@@ -24,7 +25,7 @@ that order.
 Most of the problems were found by running the real system, not by
 the automated tests with fakes. Fakes prove the logic is right; only a
 live run proves the parts work together. The other lesson is that in
-RAG the search fails more often than the model: four of the eleven
+RAG the search fails more often than the model: five of the thirteen
 problems were retrieval problems, which is why the project now has
 tests that check retrieval with real questions.
 
@@ -147,3 +148,26 @@ was written with over 40 real questions, each paired with the text its
 answer must retrieve, run against the real documents and embedding
 model. Result: a document change that breaks any of those questions
 now fails the tests before it reaches the live app.
+
+## Problem: the answers felt rigid
+
+Situation: in testing by the creator, the bot refused "I don't
+understand", listed only two of eleven items, and recited passages
+stiffly. The suspicion was that the language model was too small.
+Task: find the real cause before changing the model. Action: the same
+questions and passages were run through a larger model. It was no
+better, and it invented a wrong meaning for MCP. The causes were in
+the design: no conversation memory, a strict prompt, and random
+variation. Result: the model was kept, and memory, a reply for unclear
+messages, a temperature of 0 and a conversational prompt were added.
+
+## Problem: follow-up questions searched for the wrong thing
+
+Situation: with conversation memory added, "What tools does it have?"
+was still refused after a discussion of MCP. Task: make the search
+understand follow-ups. Action: the first design joined the earlier
+messages to the new one for the search, with no extra model call.
+Inspecting the results showed it found general MCP sections but not
+the tools section. It was replaced by query rewriting: the model first
+rewrites the follow-up as a standalone question. Result: follow-ups
+are answered correctly, at the cost of one small extra model call.

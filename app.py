@@ -5,6 +5,7 @@ the password in the APP_PASSWORD setting, and each visitor session is
 limited to MAX_QUESTIONS questions to protect the Groq quota.
 """
 
+import hashlib
 import hmac
 import logging
 import os
@@ -47,9 +48,27 @@ def get_setting(name, default=""):
         return default
 
 
-@st.cache_resource(show_spinner="Indexing the documents...")
-def load_collection():
-    """Open the database and index the documents once per restart."""
+def documents_fingerprint():
+    """Return a hash that changes whenever a document changes."""
+    digest = hashlib.sha256()
+    for path in sorted(DATA_FOLDER.iterdir()):
+        if path.suffix.lower() in DOCUMENT_SUFFIXES:
+            digest.update(path.name.encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+@st.cache_resource(show_spinner="Indexing the documents...",
+                   max_entries=1)
+def load_collection(fingerprint):
+    """Open the database and index the documents.
+
+    The result is cached, so indexing happens once and not on every
+    question.  `fingerprint` is part of the cache key: when a document
+    changes, the fingerprint changes and the index is rebuilt.  Without
+    it, a host that updates the files but keeps the process running
+    would go on searching the old index.
+    """
     collection = get_collection()
     add_documents(collection, DATA_FOLDER)
     return collection
@@ -118,7 +137,8 @@ def answer_question(question):
     """
     logger.info("question asked: %s", question)
     try:
-        result = answer(question, load_collection())
+        collection = load_collection(documents_fingerprint())
+        result = answer(question, collection)
     except Exception as error:
         logger.exception("question failed: %s", question)
         headline, detail = describe_error(error)

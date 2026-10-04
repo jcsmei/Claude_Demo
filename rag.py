@@ -55,10 +55,12 @@ def build_prompt(question, chunks, history=None):
         "You answer questions about a demo project. Use only the "
         "facts in the context below. Explain them conversationally in "
         "plain language, as if talking to a curious reader, and do "
-        "not mention the context itself. Use the conversation so far "
-        "to work out what the question refers to. If the user did not "
-        "understand an earlier answer, explain the same facts again "
-        "more simply. If the question is only a greeting or thanks, "
+        "not mention the context itself. Do not add facts, and do not "
+        "spell out abbreviations unless the context does. Use the "
+        "conversation so far to work out what the question refers to. "
+        "If the user did not understand an earlier answer, explain "
+        "the same facts again more simply. If the question is only a "
+        "greeting or thanks, "
         "or is too unclear to answer even with the conversation, "
         f"reply with only the word {UNCLEAR_MARKER}. If the context "
         "does not contain the facts needed to answer, reply with only "
@@ -97,12 +99,14 @@ def standalone_question(question, history=None, client=None):
     return rewritten
 
 
-def answer(question, collection, client=None, k=5, history=None):
+def answer(question, collection, client=None, k=5, history=None,
+           search_query=None):
     """Retrieve relevant chunks, then ask the model to answer from them.
 
     With a `history`, the search uses a standalone rewrite of the
     question, while the model still sees the original question and the
-    conversation.
+    conversation.  A caller that has already made that rewrite passes
+    it as `search_query`, which saves a model call.
 
     Return a dict with:
     - `search_query`: the text that was searched for;
@@ -118,7 +122,9 @@ def answer(question, collection, client=None, k=5, history=None):
       `source` and `distance`, kept in every case so the caller can
       show what the search found.
     """
-    search_query = standalone_question(question, history, client=client)
+    if search_query is None:
+        search_query = standalone_question(question, history,
+                                           client=client)
     chunks = search(collection, search_query, k=k)
     prompt = build_prompt(question, chunks, history=history)
     reply = ask(prompt, client=client)

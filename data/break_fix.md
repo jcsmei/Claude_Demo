@@ -3,7 +3,7 @@
 ## What problems and bugs did the project run into?
 
 The project ran into thirteen problems worth recording: a breaking
-change in the MCP library, tool errors that hid their cause, a tool
+change in the MCP (Model Context Protocol) library, tool errors that hid their cause, a tool
 that returned no structured data, a full disk, a chat box that ignored
 the question limit, an unsupported Python version, a rejected idea for
 refusing questions, a retrieval miss, a wrong fact about the creator,

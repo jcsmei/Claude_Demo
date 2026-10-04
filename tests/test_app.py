@@ -14,8 +14,10 @@ import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
+import chat
 import rag
 import store
+import tools
 from fakes import FakeEmbedding
 
 APP_FILE = str(Path(__file__).parent.parent / "app.py")
@@ -26,19 +28,19 @@ PASSAGES = [{"text": "Mars is called the red planet.",
 def fake_answer(question, collection, history=None):
     return {"answer": "Mars.", "status": "answered", "answered": True,
             "sources": ["space.txt"], "passages": PASSAGES,
-            "search_query": question}
+            "search_query": question, "tool": "documents"}
 
 
 def fake_refusal(question, collection, history=None):
     return {"answer": rag.NOT_COVERED_MESSAGE, "status": "not_covered",
             "answered": False, "sources": [], "passages": PASSAGES,
-            "search_query": question}
+            "search_query": question, "tool": "documents"}
 
 
 def fake_unclear(question, collection, history=None):
     return {"answer": rag.UNCLEAR_MESSAGE, "status": "unclear",
             "answered": False, "sources": [], "passages": PASSAGES,
-            "search_query": question}
+            "search_query": question, "tool": "documents"}
 
 
 def fake_collection():
@@ -52,7 +54,7 @@ def app(monkeypatch):
     """Return the app with a known password and fake backends."""
     monkeypatch.setenv("APP_PASSWORD", "open-sesame")
     monkeypatch.setenv("MAX_QUESTIONS", "2")
-    monkeypatch.setattr(rag, "answer", fake_answer)
+    monkeypatch.setattr(chat, "respond", fake_answer)
     monkeypatch.setattr(store, "get_collection", fake_collection)
     st.cache_resource.clear()
     return AppTest.from_file(APP_FILE, default_timeout=30)
@@ -113,7 +115,7 @@ def test_question_shows_answer_and_retrieved_passages(app):
 
 
 def test_unanswerable_question_is_explained(app, monkeypatch):
-    monkeypatch.setattr(rag, "answer", fake_refusal)
+    monkeypatch.setattr(chat, "respond", fake_refusal)
 
     ask(log_in(app), "Who won the World Cup?")
 
@@ -127,8 +129,51 @@ def test_unanswerable_question_is_explained(app, monkeypatch):
     assert len(reply.error) == 0
 
 
+def test_documents_answer_names_its_source(app):
+    ask(log_in(app), "Which is the red planet?")
+    captions = [caption.value for caption in app.chat_message[1].caption]
+    assert "Source: the project's documents" in captions
+
+
+def test_github_answer_shows_its_source_and_commits(app, monkeypatch):
+    commits = [{"sha": "abc1234", "date": "2026-10-04T20:42:40Z",
+                "message": "Add conversation memory",
+                "url": "https://github.com/example/commit/abc1234"}]
+
+    def github_answer(question, collection, history=None):
+        return {"answer": "Memory was added.", "status": "answered",
+                "answered": True, "tool": "github", "sources": ["GitHub"],
+                "passages": [], "commits": commits,
+                "search_query": question}
+    monkeypatch.setattr(chat, "respond", github_answer)
+
+    ask(log_in(app), "What changed recently?")
+
+    assert not app.exception
+    reply = app.chat_message[1]
+    assert reply.markdown[0].value == "Memory was added."
+    captions = [caption.value for caption in reply.caption]
+    assert "Source: GitHub, the project's live commit history" in captions
+    assert reply.expander[0].label == "Commits fetched from GitHub (1)"
+    assert reply.markdown[1].value == (
+        "- 2026-10-04 · "
+        "[abc1234](https://github.com/example/commit/abc1234) · "
+        "Add conversation memory"
+    )
+
+
+def test_tool_failure_is_explained(app, monkeypatch):
+    fail_with(monkeypatch, tools.ToolFailure("GitHub could not be reached."))
+
+    ask(log_in(app), "What changed recently?")
+
+    assert not app.exception
+    headline = app.chat_message[1].error[0].value
+    assert headline == "A tool failed: GitHub could not be reached."
+
+
 def test_unclear_message_gets_help_without_passages(app, monkeypatch):
-    monkeypatch.setattr(rag, "answer", fake_unclear)
+    monkeypatch.setattr(chat, "respond", fake_unclear)
 
     ask(log_in(app), "hi")
 
@@ -146,7 +191,7 @@ def test_earlier_conversation_is_passed_with_each_question(
         histories.append([(message["role"], message["content"])
                           for message in history])
         return fake_answer(question, collection)
-    monkeypatch.setattr(rag, "answer", recording_answer)
+    monkeypatch.setattr(chat, "respond", recording_answer)
     log_in(app)
 
     ask(app, "Which is the red planet?")
@@ -164,7 +209,7 @@ def test_rewritten_follow_up_is_shown_with_the_passages(
         result = fake_answer(question, collection)
         result["search_query"] = "Which planet is the red planet?"
         return result
-    monkeypatch.setattr(rag, "answer", rewriting_answer)
+    monkeypatch.setattr(chat, "respond", rewriting_answer)
 
     ask(log_in(app), "which one is it?")
 
@@ -190,7 +235,7 @@ def test_failed_answers_are_left_out_of_the_conversation(
     def recording_answer(question, collection, history=None):
         histories.append([message["content"] for message in history])
         return fake_answer(question, collection)
-    monkeypatch.setattr(rag, "answer", recording_answer)
+    monkeypatch.setattr(chat, "respond", recording_answer)
     ask(app, "Second question?")
 
     assert histories == [["First question?"]]
@@ -259,7 +304,7 @@ def fail_with(monkeypatch, error):
     """Make every question fail with `error`."""
     def broken(question, collection, history=None):
         raise error
-    monkeypatch.setattr(rag, "answer", broken)
+    monkeypatch.setattr(chat, "respond", broken)
 
 
 def groq_status_error(error_class, status):

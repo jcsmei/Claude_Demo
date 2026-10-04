@@ -18,12 +18,13 @@ list of inputs, so the assistant knows when and how to use it.
 
 ## What tools does the MCP server have?
 
-The MCP server has two tools: search_documents and ask_documents.
+The MCP server has three tools: search_documents, ask_documents and
+recent_commits.
 
 ## Where are the MCP tools defined?
 
-Both tools, search_documents and ask_documents, are defined in the
-file mcp_server.py. The server is named rag-demo.
+All three tools, search_documents, ask_documents and recent_commits,
+are defined in the file mcp_server.py. The server is named rag-demo.
 
 ## What does the search_documents tool do?
 
@@ -41,7 +42,17 @@ model on Groq to answer from them. It returns the answer and the list
 of source files. When the documents do not contain the answer, the
 answer says so and the list of sources is empty.
 
-## Why does the MCP server have two tools instead of one?
+## What does the recent_commits tool do?
+
+The recent_commits tool returns the project's most recent commits from
+GitHub, newest first. Each commit comes with its short ID, its date,
+the first line of its message and a link. It calls GitHub's public API
+live, so it shows changes made after these documents were written.
+Author names and email addresses are left out. Results are reused for
+ten minutes, because GitHub limits how often its API may be called
+without a login.
+
+## Why does the MCP server have separate tools for searching and for asking?
 
 The two tools serve different callers. An AI assistant such as Claude
 can write its own answer, so it often needs only the passages:
@@ -61,7 +72,7 @@ the server runs: that would corrupt the protocol.
 
 The file .mcp.json in the project tells Claude Code how to start the
 server. When the project is opened in Claude Code and the server is
-approved, the two tools become available to the assistant. This was
+approved, the tools become available to the assistant. This was
 tested: the assistant called both tools and found the project
 codename.
 
@@ -69,9 +80,10 @@ codename.
 
 No. The Streamlit chat page calls the RAG code directly, because the
 page is the project's own Python code and can import the function. MCP
-exists so that outside AI assistants can use the same ability. The
-design is one RAG core with two front ends: the MCP server for
-assistants and the chat page for people.
+exists so that outside AI assistants can use the same abilities. The
+design is one shared core with two front ends: the MCP server for
+assistants and the chat page for people. The chat page chooses
+between the same tools by itself.
 
 ## How does the MCP server handle errors?
 

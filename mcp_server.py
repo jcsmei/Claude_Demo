@@ -14,6 +14,7 @@ from typing import TypedDict
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
+import tools
 from rag import DATA_FOLDER, answer
 from store import add_documents, get_collection, search
 
@@ -21,7 +22,8 @@ server = MCPServer(
     "rag-demo",
     instructions=(
         "Search and answer questions about the demo project's "
-        "documents on RAG, MCP and the project itself."
+        "documents on RAG, MCP and the project itself, and list the "
+        "project's latest commits on GitHub."
     ),
 )
 
@@ -81,6 +83,15 @@ class Passage(TypedDict):
     distance: float
 
 
+class Commit(TypedDict):
+    """The fields of each commit returned by recent_commits."""
+
+    sha: str
+    date: str
+    message: str
+    url: str
+
+
 class Answer(TypedDict):
     """The fields returned by ask_documents.
 
@@ -133,6 +144,22 @@ def ask_documents(question: str) -> Answer:
         raise ToolError("question must not be empty")
     result = answer(question, _collection())
     return {"answer": result["answer"], "sources": result["sources"]}
+
+
+@server.tool()
+@logged
+def recent_commits(limit: int = 5) -> list[Commit]:
+    """Return the project's most recent commits on GitHub, newest first.
+
+    Each commit has its short `sha`, its `date`, the first line of its
+    `message` and its `url`.  `limit` is how many to return (1 to 20).
+    This calls GitHub's public API, so it needs an internet connection.
+    """
+    try:
+        return tools.recent_commits(limit)
+    except tools.ToolFailure as error:
+        # Passed on as a ToolError so the assistant sees the reason.
+        raise ToolError(str(error)) from error
 
 
 if __name__ == "__main__":

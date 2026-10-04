@@ -314,7 +314,8 @@ st.set_page_config(page_title="RAG demo")
 st.title("Ask the documents")
 st.caption(
     "A retrieval-augmented generation (RAG) demo: answers come from "
-    "the project's documents, not from the model's memory."
+    "the project's documents and two live sources, GitHub and NYC "
+    "Open Data, not from the model's memory."
 )
 require_password()
 

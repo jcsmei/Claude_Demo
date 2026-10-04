@@ -57,8 +57,8 @@ CASES = [
     ("What is this chat bot, and how does it know about itself?",
      "self-awareness is retrieval"),
     # Problems found and fixed
-    ("What problems did the project run into?", "fifteen problems"),
-    ("What bugs did you find?", "fifteen problems"),
+    ("What problems did the project run into?", "sixteen problems"),
+    ("What bugs did you find?", "sixteen problems"),
     ("What is the STAR format?", "Situation, Task, Action, Result"),
     ("What was the biggest lesson learned?", "running the real system"),
     ("Why did the live app show old answers?", "fingerprint"),
@@ -89,6 +89,8 @@ CASES = [
     ("How is the SQL kept safe?", "single SELECT statement"),
     ("Can the bot reach data in more than one place?",
      "draws on three sources"),
+    ("Did testing ever break the live app?", "daily allowance"),
+    ("Is there a daily limit?", "200,000 tokens per day"),
     # The creator
     ("Who built this demo, and what is his background?",
      "technical solutions architect based in New York"),

@@ -2,15 +2,16 @@
 
 ## What problems and bugs did the project run into?
 
-The project ran into fifteen problems worth recording: a breaking
+The project ran into sixteen problems worth recording: a breaking
 change in the MCP (Model Context Protocol) library, tool errors that hid their cause, a tool
 that returned no structured data, a full disk, a chat box that ignored
 the question limit, an unsupported Python version, a rejected idea for
 refusing questions, a retrieval miss, a wrong fact about the creator,
 a live app that searched old documents, questions that silently
 stopped working, answers that felt rigid, follow-up questions that
-searched for the wrong thing, a dataset that held personal data, and
-SQL that returned wrong or invented answers. Each one is described in its own section
+searched for the wrong thing, a dataset that held personal data, SQL
+that returned wrong or invented answers, and testing that used up the
+daily allowance of the language model. Each one is described in its own section
 in the STAR format.
 
 ## What is the STAR format used in the bug reports?
@@ -26,7 +27,7 @@ that order.
 Most of the problems were found by running the real system, not by
 the automated tests with fakes. Fakes prove the logic is right; only a
 live run proves the parts work together. The other lesson is that in
-RAG the search fails more often than the model: five of the fifteen
+RAG the search fails more often than the model: five of the sixteen
 problems were retrieval problems, which is why the project now has
 tests that check retrieval with real questions.
 
@@ -193,3 +194,15 @@ invited the bad filter was removed, queries that read no data are
 rejected, an empty result triggers one corrected attempt, and
 questions about where the data comes from are sent to the documents.
 Result: the same questions return the correct numbers.
+
+## Problem: testing used up the daily allowance and took the live app offline
+
+Situation: the bot's live checks and the public app share one Groq
+account on the free tier. Only the limit of 8,000 tokens per minute
+had been noticed. Task: verify the new tools against the real model.
+Action: repeated live checks ran until Groq refused every call; its
+message revealed a second limit of 200,000 tokens per day, nearly all
+used. Result: the public app could not answer until the allowance
+refilled. Live checks are now rationed to a few messages per change,
+and the page explains the daily limit. Lesson: read a service's limits
+before testing against a shared account.

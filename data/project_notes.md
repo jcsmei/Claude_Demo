@@ -71,7 +71,9 @@ The answers are written by the model openai/gpt-oss-20b, an
 open-weight language model published by OpenAI with about 20 billion
 parameters. The model is run by Groq, a company that hosts language
 models and serves them through an API. The app sends the prompt to
-Groq over the internet and receives the answer back.
+Groq over the internet and receives the answer back. A second model,
+openai/gpt-oss-120b, is used as a backup when the first is rate
+limited.
 
 ## Why was this language model chosen?
 
@@ -179,12 +181,13 @@ Streamlit 1.65.0 for the chat page, and pytest for the tests.
 ## Is there a rate limit on questions?
 
 Yes, three limits apply. Each visit is limited to 20 questions. The
-project's Groq account, on the free tier, allows 8,000 tokens per
-minute and 200,000 tokens per day. A chat message uses roughly 2,500
-to 4,000 tokens across two or three model calls, so about 50 to 80
-messages can be answered per day across all visitors. When a limit is
-reached, the page says which one and whether to wait a minute or to
-try again later.
+project's Groq account, on the free tier, allows each model 8,000
+tokens per minute and 200,000 tokens per day. A chat message uses
+roughly 2,500 to 4,000 tokens across two or three model calls, so the
+main model can answer about 50 to 80 messages per day across all
+visitors. When the main model reaches a limit, the bot switches to a
+second model. Only if both are limited does the page say which limit
+was reached and when to try again.
 
 ## How does the bot choose which tool to use?
 
@@ -256,3 +259,14 @@ its own documents, searched by meaning; GitHub, called live for recent
 code changes; and NYC Open Data, queried live with SQL. A web search
 tool is planned as a fourth, to be used only when the documents do not
 cover a question.
+
+## What happens when the language model's allowance runs out?
+
+Groq counts its limits separately for each model. When the main model,
+openai/gpt-oss-20b, is rate limited, the bot sends the same question
+to a second model on the same account, openai/gpt-oss-120b, so
+visitors still get an answer. The main model is then skipped for ten
+minutes, so that later questions do not each wait on a request that
+would be refused. Every switch is written to the log. If both models
+are rate limited, the page says so. This was chosen over a mode that
+only shows search results, because the bot should stay able to answer.

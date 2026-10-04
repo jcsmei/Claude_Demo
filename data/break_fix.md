@@ -203,6 +203,7 @@ had been noticed. Task: verify the new tools against the real model.
 Action: repeated live checks ran until Groq refused every call; its
 message revealed a second limit of 200,000 tokens per day, nearly all
 used. Result: the public app could not answer until the allowance
-refilled. Live checks are now rationed to a few messages per change,
-and the page explains the daily limit. Lesson: read a service's limits
-before testing against a shared account.
+refilled. Three changes followed: live checks are rationed to a few
+messages per change, the bot switches to a second model when the first
+is rate limited, and the page explains the daily limit. Lesson: read a
+service's limits before testing against a shared account.

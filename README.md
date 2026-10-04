@@ -119,6 +119,11 @@ The page stays locked until the password is entered; with no
   day for the default model. A chat message uses roughly 2,500 to
   4,000 tokens, so expect about 50 to 80 messages a day in total.
   Live testing draws on the same allowance as the deployed app.
+- **Model fallback.** Groq counts limits per model, so when the
+  default model is rate limited the same question goes to a second
+  model, `openai/gpt-oss-120b`. Change it with
+  `GROQ_FALLBACK_MODEL=<model id>` in `.env`, or set it to an empty
+  value to turn the fallback off.
 - **GitHub** limits calls made without a login, so commit results are
   reused for ten minutes.
 

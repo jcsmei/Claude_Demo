@@ -1,0 +1,11 @@
+# Secrets (API keys) - never commit
+.env
+
+# Virtual environment - recreate with: python -m venv .venv
+.venv/
+
+# Personal Claude Code settings for this machine
+.claude/settings.local.json
+
+# Python's auto-generated compiled files
+__pycache__/

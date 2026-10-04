@@ -21,6 +21,12 @@ HISTORY = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def no_web_search(monkeypatch):
+    """Keep tests off the network; tests of the web search turn it on."""
+    monkeypatch.setattr(tools, "web_search_available", lambda: False)
+
+
 @pytest.fixture
 def collection(tmp_path):
     """Return an in-memory collection holding one document."""
@@ -252,6 +258,136 @@ def test_respond_gives_up_after_two_failed_queries(collection, monkeypatch):
         chat.respond("how many drivers?", collection, client=client)
     # Choosing the tool, then two attempts at the SQL.
     assert len(client.calls) == 3
+
+
+WEB_RESULTS = [{"title": "Taxi medallion", "content": "A permit.",
+                "url": "https://example.com/medallion"}]
+NOT_COVERED_REPLIES = ["TOOL: documents\nQUESTION: unused",
+                       "NOT_IN_DOCUMENTS"]
+
+
+def enable_web_search(monkeypatch, search=None):
+    """Turn the web search on, with a fake in place of Tavily."""
+    searched = []
+
+    def fake_search(query):
+        searched.append(query)
+        return WEB_RESULTS
+    monkeypatch.setattr(tools, "web_search_available", lambda: True)
+    monkeypatch.setattr(tools, "web_search", search or fake_search)
+    return searched
+
+
+def test_respond_searches_the_web_when_documents_do_not_cover_it(
+        collection, monkeypatch):
+    searched = enable_web_search(monkeypatch)
+    client = FakeClient(NOT_COVERED_REPLIES + ["A medallion is a permit."])
+
+    result = chat.respond("what are medallions?", collection, client=client)
+
+    assert searched == ["what are medallions?"]
+    assert result["tool"] == "web"
+    assert result["status"] == "answered"
+    assert result["answer"] == (
+        f"{chat.WEB_NOTICE}\n\nA medallion is a permit."
+    )
+    assert result["web_results"] == WEB_RESULTS
+    assert result["sources"] == ["https://example.com/medallion"]
+    sent = client.calls[2]["messages"][0]["content"]
+    assert "Taxi medallion (https://example.com/medallion)" in sent
+
+
+def test_respond_does_not_search_the_web_when_documents_answer(
+        collection, monkeypatch):
+    searched = enable_web_search(monkeypatch)
+    client = FakeClient(["TOOL: documents\nQUESTION: unused", "Mars."])
+
+    result = chat.respond("which planet is red?", collection, client=client)
+
+    assert result["tool"] == "documents"
+    assert searched == []
+
+
+@pytest.mark.parametrize("question", [
+    "What is Jack's phone number?",
+    "where does jack mei live",
+    "who owns the email jane.doe@example.com?",
+    "whose number is 774-555-0123?",
+    "look up (212) 555 0199",
+])
+def test_respond_never_searches_the_web_for_personal_details(
+        collection, monkeypatch, question):
+    searched = enable_web_search(monkeypatch)
+    client = FakeClient(NOT_COVERED_REPLIES)
+
+    result = chat.respond(question, collection, client=client)
+
+    assert searched == []
+    assert result["tool"] == "documents"
+    assert result["status"] == "not_covered"
+
+
+def test_respond_stays_with_the_refusal_when_web_search_is_off(collection):
+    client = FakeClient(NOT_COVERED_REPLIES)
+
+    result = chat.respond("what are medallions?", collection, client=client)
+
+    assert result["tool"] == "documents"
+    assert result["status"] == "not_covered"
+    assert len(client.calls) == 2
+
+
+def test_respond_says_when_the_web_has_no_answer_either(
+        collection, monkeypatch):
+    enable_web_search(monkeypatch)
+    client = FakeClient(NOT_COVERED_REPLIES + ["NOT_FOUND"])
+
+    result = chat.respond("what are medallions?", collection, client=client)
+
+    assert result["tool"] == "web"
+    assert result["status"] == "not_covered"
+    assert result["answer"] == chat.WEB_NOT_FOUND_MESSAGE
+    assert result["sources"] == []
+
+
+def test_respond_keeps_the_refusal_when_the_web_search_fails(
+        collection, monkeypatch):
+    def failing(query):
+        raise tools.ToolFailure("The web search allowance is used up.")
+    enable_web_search(monkeypatch, search=failing)
+    client = FakeClient(NOT_COVERED_REPLIES)
+
+    result = chat.respond("what are medallions?", collection, client=client)
+
+    assert result["tool"] == "documents"
+    assert result["status"] == "not_covered"
+    assert result["answer"].endswith(
+        "A web search was tried but failed: "
+        "The web search allowance is used up."
+    )
+
+
+@pytest.mark.parametrize("question", [
+    "what are medallions?",
+    "how many licenses expire in 2027?",
+    "what happened between 2019 and 2021?",
+])
+def test_ordinary_questions_may_be_searched_on_the_web(
+        monkeypatch, question):
+    monkeypatch.setattr(tools, "web_search_available", lambda: True)
+    assert chat.web_search_allowed(question)
+
+
+def test_web_notice_says_the_answer_is_not_from_the_documents():
+    assert "not from the official documents" in chat.WEB_NOTICE
+    assert "not been verified" in chat.WEB_NOTICE
+
+
+def test_flow_diagram_shows_the_web_search_fallback():
+    diagram = chat.flow_diagram()
+    assert '"documents" -> "web_search" [style=dashed];' in diagram
+    assert '"documents" -> "answer" [style=dashed];' in diagram
+    assert '"web_search" -> "answer";' in diagram
 
 
 def test_graph_routes_through_one_node_per_tool():

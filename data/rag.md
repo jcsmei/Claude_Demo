@@ -130,10 +130,12 @@ bot can search.
 
 The prompt tells the model to reply with a fixed marker when the
 retrieved chunks do not contain the answer. The code detects the
-marker and shows a standard message saying the documents do not
-contain an answer. The app still lists the closest passages it found,
-labelled as not containing the answer, so the viewer can see that the
-search ran.
+marker instead of trusting the model's wording. For a general
+question, the bot then says the documents do not cover it and searches
+the web. For a question about the project's creator, or when the web
+search is unavailable, it shows a standard message saying the
+documents do not contain an answer, and lists the closest passages it
+found, labelled as not containing the answer.
 
 ## Why does the bot not use a distance cutoff to refuse questions?
 

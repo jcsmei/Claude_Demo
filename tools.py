@@ -1,5 +1,6 @@
 """Tools that fetch live information from outside the project."""
 
+import os
 import sqlite3
 import time
 
@@ -173,3 +174,54 @@ def query_license_data(sql, http_get=httpx.get):
         connection.close()
     return {"sql": statement, "columns": columns, "rows": rows,
             "updated": data["updated"]}
+
+
+TAVILY_URL = "https://api.tavily.com/search"
+WEB_RESULTS = 3
+# Each result's text is cut to this length to limit the tokens used.
+SNIPPET_CHARS = 500
+
+
+def web_search_available():
+    """Return True when a key for the web search service is set."""
+    return bool(os.environ.get("TAVILY_API_KEY"))
+
+
+def web_search(query, http_post=httpx.post):
+    """Return up to `WEB_RESULTS` web results for `query`, from Tavily.
+
+    Each result is a dict with its `title`, `url` and `content`, a
+    short extract of the page.  The key is read from the
+    TAVILY_API_KEY setting.
+    """
+    key = os.environ.get("TAVILY_API_KEY", "")
+    if not key:
+        raise ToolFailure("Web search is not configured.")
+    try:
+        response = http_post(
+            TAVILY_URL,
+            headers={"Authorization": f"Bearer {key}"},
+            json={"query": query, "max_results": WEB_RESULTS},
+            timeout=TIMEOUT_SECONDS,
+        )
+    except httpx.HTTPError as error:
+        raise ToolFailure(
+            "The web search service could not be reached."
+        ) from error
+    if response.status_code in (401, 403):
+        raise ToolFailure("The web search key was rejected.")
+    if response.status_code == 429:
+        raise ToolFailure("The web search allowance is used up.")
+    if response.status_code != 200:
+        raise ToolFailure(
+            f"The web search service returned HTTP {response.status_code}."
+        )
+    return [
+        {
+            "title": item.get("title", ""),
+            "url": item["url"],
+            "content": " ".join(item.get("content", "").split())
+            [:SNIPPET_CHARS],
+        }
+        for item in response.json().get("results", [])[:WEB_RESULTS]
+    ]

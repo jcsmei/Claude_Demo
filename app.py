@@ -14,7 +14,7 @@ import groq
 import streamlit as st
 from dotenv import load_dotenv
 
-from chat import flow_diagram, respond
+from chat import WEB_NOTICE, flow_diagram, respond
 from rag import DATA_FOLDER
 from tools import ToolFailure
 from store import DOCUMENT_SUFFIXES, add_documents, get_collection
@@ -38,6 +38,8 @@ SOURCE_LABELS = {
     "github": "Source: GitHub, the project's live commit history",
     "nyc_data": ("Source: NYC Open Data, live counts of active "
                  "medallion taxi driver licenses"),
+    "web": ("Source: a web search (Tavily), not the project's "
+            "official documents"),
 }
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")
@@ -171,6 +173,11 @@ def answer_question(question, history):
     if result["status"] == "not_covered":
         content += (" Try a question about the documents listed in "
                     "the sidebar.")
+    # A web answer's notice is shown as a highlighted box, not as part
+    # of the answer text.
+    notice = None
+    if result["tool"] == "web" and content.startswith(WEB_NOTICE):
+        notice, content = WEB_NOTICE, content[len(WEB_NOTICE):].strip()
     # Kept only when a follow-up was rewritten for the search.
     rewritten = result["search_query"]
     if rewritten == question:
@@ -179,8 +186,9 @@ def answer_question(question, history):
             "passages": result["passages"],
             "commits": result.get("commits"),
             "query": result.get("query"),
+            "web_results": result.get("web_results"),
             "status": result["status"], "tool": result["tool"],
-            "rewritten": rewritten}
+            "rewritten": rewritten, "notice": notice}
 
 
 def show_commits(commits):
@@ -217,6 +225,23 @@ def show_query(query):
         )
 
 
+def show_web_results(results):
+    """List the web pages a web answer was drawn from."""
+    with st.expander(f"Web results ({len(results)})"):
+        st.caption(
+            "These are web pages, not the project's official "
+            "documents. The documents did not cover this question, so "
+            "the bot searched the web with Tavily. The model was given "
+            "these extracts and told to answer from them only. Web "
+            "pages are not checked by this project, so follow the "
+            "links to judge them."
+        )
+        for number, result in enumerate(results, start=1):
+            st.markdown(f"**{number}. [{result['title']}]"
+                        f"({result['url']})**")
+            st.text(result["content"])
+
+
 def show_message(message):
     """Draw one chat message, with its retrieved passages if any."""
     with st.chat_message(message["role"]):
@@ -225,6 +250,8 @@ def show_message(message):
             with st.expander("Technical details"):
                 st.code(message["detail"], language=None)
             return
+        if message.get("notice"):
+            st.warning(message["notice"])
         st.markdown(message["content"])
         # Only the bot's answers have a source; a visitor's own
         # message and the reply to an unclear one do not.
@@ -235,6 +262,9 @@ def show_message(message):
             return
         if message.get("query"):
             show_query(message["query"])
+            return
+        if message.get("web_results"):
+            show_web_results(message["web_results"])
             return
         passages = message.get("passages")
         # An unclear message has no answer to trace back to passages.
@@ -315,7 +345,8 @@ st.title("Ask the documents")
 st.caption(
     "A retrieval-augmented generation (RAG) demo: answers come from "
     "the project's documents and two live sources, GitHub and NYC "
-    "Open Data, not from the model's memory."
+    "Open Data, not from the model's memory. If the documents do not "
+    "cover a question, the bot says so and searches the web."
 )
 require_password()
 

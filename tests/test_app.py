@@ -162,6 +162,41 @@ def test_github_answer_shows_its_source_and_commits(app, monkeypatch):
     )
 
 
+def test_data_answer_shows_its_source_sql_and_rows(app, monkeypatch):
+    query = {"sql": "SELECT SUM(drivers) AS total FROM driver_licenses",
+             "columns": ["total"], "rows": [[180648]],
+             "updated": "2026-10-04"}
+
+    def data_answer(question, collection, history=None):
+        return {"answer": "There are 180648 drivers.", "status": "answered",
+                "answered": True, "tool": "nyc_data",
+                "sources": ["NYC Open Data"], "passages": [],
+                "query": query, "search_query": question}
+    monkeypatch.setattr(chat, "respond", data_answer)
+
+    ask(log_in(app), "How many drivers are there?")
+
+    assert not app.exception
+    reply = app.chat_message[1]
+    assert reply.markdown[0].value == "There are 180648 drivers."
+    captions = " ".join(caption.value for caption in reply.caption)
+    assert "Source: NYC Open Data" in captions
+    assert "no driver names or license numbers" in captions
+    assert reply.expander[0].label == (
+        "Query run on NYC Open Data (1 rows returned)"
+    )
+    assert reply.code[0].value == query["sql"]
+    assert reply.dataframe[0].value.to_dict("records") == [
+        {"total": 180648}
+    ]
+
+
+def test_sidebar_shows_the_decision_flow(app):
+    log_in(app)
+    headers = [header.value for header in app.sidebar.header]
+    assert "How the bot decides" in headers
+
+
 def test_tool_failure_is_explained(app, monkeypatch):
     fail_with(monkeypatch, tools.ToolFailure("GitHub could not be reached."))
 
@@ -345,6 +380,21 @@ def test_groq_failures_are_explained(app, monkeypatch, error, expected):
     headline = app.chat_message[1].error[0].value
     assert headline.startswith("Generation failed")
     assert expected in headline
+
+
+def test_daily_limit_is_explained_differently(app, monkeypatch):
+    request = httpx.Request("POST", "https://api.groq.com/test")
+    error = groq.RateLimitError(
+        "Rate limit reached on tokens per day (TPD): Limit 200000",
+        response=httpx.Response(429, request=request), body=None,
+    )
+    fail_with(monkeypatch, error)
+
+    ask(log_in(app), "Which is the red planet?")
+
+    headline = app.chat_message[1].error[0].value
+    assert "daily allowance" in headline
+    assert "Wait a minute" not in headline
 
 
 def test_secrets_are_removed_from_error_details(app, monkeypatch):

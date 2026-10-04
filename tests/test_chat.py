@@ -128,3 +128,148 @@ def test_respond_lets_a_tool_failure_through(collection, monkeypatch):
 
     with pytest.raises(tools.ToolFailure, match="could not be reached"):
         chat.respond("what's new?", collection, client=client)
+
+
+QUERY = {"sql": "SELECT SUM(drivers) AS total FROM driver_licenses",
+         "columns": ["total"], "rows": [[180648]],
+         "updated": "2026-10-04"}
+
+
+def test_write_sql_removes_a_code_fence():
+    client = FakeClient("```sql\nSELECT 1\n```")
+    assert chat.write_sql("How many?", client=client) == "SELECT 1"
+    sent = client.received["messages"][0]["content"]
+    assert "Table driver_licenses" in sent
+    assert sent.endswith("Question: How many?")
+
+
+def test_write_sql_shows_the_model_its_failed_attempt():
+    client = FakeClient("SELECT 1")
+    chat.write_sql("How many?", "SELECT nope", "no such column: nope",
+                   client=client)
+    sent = client.received["messages"][0]["content"]
+    assert "SELECT nope" in sent
+    assert "no such column: nope" in sent
+
+
+def test_respond_answers_from_the_license_data(collection, monkeypatch):
+    ran = []
+
+    def fake_query(sql):
+        ran.append(sql)
+        return QUERY
+    monkeypatch.setattr(tools, "query_license_data", fake_query)
+    client = FakeClient([
+        "TOOL: nyc_data\nQUESTION: How many drivers?",
+        "SELECT SUM(drivers) AS total FROM driver_licenses",
+        "There are 180648 active drivers.",
+    ])
+
+    result = chat.respond("how many drivers?", collection, client=client)
+
+    assert result["tool"] == "nyc_data"
+    assert result["answer"] == "There are 180648 active drivers."
+    assert result["query"] == QUERY
+    assert ran == ["SELECT SUM(drivers) AS total FROM driver_licenses"]
+    final_prompt = client.calls[2]["messages"][0]["content"]
+    assert "total\n180648" in final_prompt
+    assert "2026-10-04" in final_prompt
+
+
+def test_respond_retries_once_when_the_sql_fails(collection, monkeypatch):
+    ran = []
+
+    def fake_query(sql):
+        ran.append(sql)
+        if "nope" in sql:
+            raise tools.QueryError("The SQL failed: no such column: nope")
+        return QUERY
+    monkeypatch.setattr(tools, "query_license_data", fake_query)
+    client = FakeClient([
+        "TOOL: nyc_data\nQUESTION: How many drivers?",
+        "SELECT nope FROM driver_licenses",
+        "SELECT SUM(drivers) AS total FROM driver_licenses",
+        "There are 180648 active drivers.",
+    ])
+
+    result = chat.respond("how many drivers?", collection, client=client)
+
+    assert result["answer"] == "There are 180648 active drivers."
+    assert ran == ["SELECT nope FROM driver_licenses",
+                   "SELECT SUM(drivers) AS total FROM driver_licenses"]
+    # The second SQL request shows the model what went wrong.
+    retry_prompt = client.calls[2]["messages"][0]["content"]
+    assert "no such column: nope" in retry_prompt
+
+
+def test_respond_retries_once_when_the_result_is_empty(
+        collection, monkeypatch):
+    empty = {"sql": "SELECT ...", "columns": ["total"], "rows": [[None]],
+             "updated": "2026-10-04"}
+    results = [empty, QUERY]
+    monkeypatch.setattr(tools, "query_license_data",
+                        lambda sql: results.pop(0))
+    client = FakeClient([
+        "TOOL: nyc_data\nQUESTION: How many drivers?",
+        "SELECT SUM(drivers) FROM driver_licenses WHERE expiry_year = 1",
+        "SELECT SUM(drivers) AS total FROM driver_licenses",
+        "There are 180648 active drivers.",
+    ])
+
+    result = chat.respond("how many drivers?", collection, client=client)
+
+    assert result["query"] == QUERY
+    retry_prompt = client.calls[2]["messages"][0]["content"]
+    assert "returned no data" in retry_prompt
+
+
+def test_respond_reports_an_empty_result_after_the_retry(
+        collection, monkeypatch):
+    empty = {"sql": "SELECT ...", "columns": ["total"], "rows": [],
+             "updated": "2026-10-04"}
+    monkeypatch.setattr(tools, "query_license_data", lambda sql: empty)
+    client = FakeClient([
+        "TOOL: nyc_data\nQUESTION: How many expire in 1999?",
+        "SELECT ...", "SELECT ...", "The data has no matching rows.",
+    ])
+
+    result = chat.respond("how many in 1999?", collection, client=client)
+
+    assert result["answer"] == "The data has no matching rows."
+    assert result["query"] == empty
+
+
+def test_respond_gives_up_after_two_failed_queries(collection, monkeypatch):
+    def failing(sql):
+        raise tools.QueryError("The SQL failed: no such column: nope")
+    monkeypatch.setattr(tools, "query_license_data", failing)
+    client = FakeClient([
+        "TOOL: nyc_data\nQUESTION: How many drivers?",
+        "SELECT nope FROM driver_licenses",
+    ])
+
+    with pytest.raises(tools.ToolFailure, match="after 2 attempts"):
+        chat.respond("how many drivers?", collection, client=client)
+    # Choosing the tool, then two attempts at the SQL.
+    assert len(client.calls) == 3
+
+
+def test_graph_routes_through_one_node_per_tool():
+    nodes = set(chat.GRAPH.get_graph().nodes)
+    assert {"choose_tool", "documents", "github", "write_sql",
+            "run_sql", "data_answer"} <= nodes
+
+
+def test_flow_diagram_shows_the_sql_retry_loop():
+    diagram = chat.flow_diagram()
+    assert '"choose_tool" -> "write_sql" [style=dashed];' in diagram
+    assert '"run_sql" -> "write_sql" [style=dashed];' in diagram
+    assert '"run_sql" -> "data_answer" [style=dashed];' in diagram
+
+
+def test_flow_diagram_shows_the_choice_between_tools():
+    diagram = chat.flow_diagram()
+    assert '"message" -> "choose_tool";' in diagram
+    assert '"choose_tool" -> "documents" [style=dashed];' in diagram
+    assert '"choose_tool" -> "github" [style=dashed];' in diagram
+    assert '"github" -> "answer";' in diagram

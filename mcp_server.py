@@ -22,8 +22,9 @@ server = MCPServer(
     "rag-demo",
     instructions=(
         "Search and answer questions about the demo project's "
-        "documents on RAG, MCP and the project itself, and list the "
-        "project's latest commits on GitHub."
+        "documents on RAG, MCP and the project itself, list the "
+        "project's latest commits on GitHub, and query live counts "
+        "of New York City taxi driver licenses."
     ),
 )
 
@@ -90,6 +91,15 @@ class Commit(TypedDict):
     date: str
     message: str
     url: str
+
+
+class QueryResult(TypedDict):
+    """The fields returned by query_license_data."""
+
+    sql: str
+    columns: list[str]
+    rows: list[list[str | int | float | None]]
+    updated: str
 
 
 class Answer(TypedDict):
@@ -159,6 +169,29 @@ def recent_commits(limit: int = 5) -> list[Commit]:
         return tools.recent_commits(limit)
     except tools.ToolFailure as error:
         # Passed on as a ToolError so the assistant sees the reason.
+        raise ToolError(str(error)) from error
+
+
+@server.tool()
+@logged
+def query_license_data(sql: str) -> QueryResult:
+    """Run one read-only SQL query on live NYC taxi driver license counts.
+
+    The data comes from NYC Open Data and holds counts only, with no
+    names or license numbers.  Use SQLite syntax and a single SELECT
+    statement.  At most 50 rows are returned.
+
+    Table driver_licenses: New York City medallion taxi drivers who
+    hold an active license, counted by the month the license expires.
+    - expiry_month TEXT: the month the licenses expire, as 'YYYY-MM'
+    - expiry_year INTEGER: the year the licenses expire
+    - drivers INTEGER: active drivers whose license expires that month
+    Every row is a medallion taxi driver license.  The total number of
+    active drivers is SUM(drivers).
+    """
+    try:
+        return tools.query_license_data(sql)
+    except tools.ToolFailure as error:
         raise ToolError(str(error)) from error
 
 

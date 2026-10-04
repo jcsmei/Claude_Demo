@@ -167,7 +167,8 @@ again.
 ## Which technologies does the project use?
 
 Python 3.12, Chroma 1.5.9 as the vector database, the Groq SDK 1.7.0
-for the language model, the MCP Python SDK 2.3.0 for the server,
+for the language model, the MCP Python SDK 2.3.0 for the server, LangGraph 1.2.12 for the
+decision flow,
 Streamlit 1.65.0 for the chat page, and pytest for the tests.
 
 ## Is there a rate limit on questions?
@@ -181,12 +182,13 @@ visitor to wait a minute.
 
 ## How does the bot choose which tool to use?
 
-For every message, the language model first chooses a tool: the
-project's documents, or GitHub for questions about recent code
-changes. The same call rewrites a follow-up into a standalone
-question. The chosen tool then fetches its information and the model
-answers from it. Each answer names its source underneath, so the
-reader always knows whether it came from the documents or from GitHub.
+For every message, the language model first chooses one of three
+tools: the project's documents, GitHub for questions about recent code
+changes, or NYC Open Data for counts of taxi driver licenses. The same
+call rewrites a follow-up into a standalone question. The chosen tool
+then fetches its information and the model answers from it. Each
+answer names its source underneath, so the reader always knows where
+it came from.
 
 ## Can the bot tell me what changed in the code recently?
 
@@ -194,3 +196,57 @@ Yes. Questions such as "What changed in the code most recently?" are
 answered from the project's live commit history on GitHub, not from
 the documents. The answer lists the commits it was drawn from, each
 with a link.
+
+## Does the project use LangGraph, and why?
+
+Yes. The decision flow in the file chat.py is a LangGraph graph: one
+node chooses a tool, and the graph routes to the nodes for that tool.
+The project started in plain Python, because the flow was a straight
+line: search, then answer. LangGraph was adopted when the flow gained
+branches and a retry loop, which is what a graph library is for. The
+page shows a diagram that is generated from the graph itself, so the
+picture cannot drift from the code.
+
+## Where does the taxi driver data come from?
+
+The taxi driver numbers come from NYC Open Data, the City of New
+York's public data site, from the dataset "Medallion Drivers - Active"
+published by the Taxi and Limousine Commission. The city refreshes it
+daily. The bot fetches it live through the city's API and keeps a copy
+for six hours, so the numbers are current and are not stored in the
+project.
+
+## Why does the taxi driver data hold only counts and no names?
+
+The source dataset lists about 180,000 individual drivers with their
+names and license numbers. It is a public record, but a demo should
+not become a tool for looking up named people. So the bot asks the
+city's API for counts only, grouped by the month a license expires.
+Names and license numbers are never downloaded, stored or shown.
+
+## Why is the taxi data queried with SQL instead of searched like the documents?
+
+Retrieval finds the few passages closest in meaning to a question.
+That suits text, but it cannot total a column, count rows or filter by
+year. A table is structured data, so the right approach is to query
+it. The model writes a SQL statement, it runs on the table, and the
+model answers from the rows returned. Using retrieval for text and SQL
+for tables shows that different kinds of data need different tools.
+
+## How is the SQL the model writes kept safe?
+
+The SQL runs on a small temporary table that holds only public counts.
+Only a single SELECT statement that reads that table is accepted, the
+database is set to refuse any change, at most 50 rows are returned,
+and a query that runs too long is stopped. If the SQL fails or returns
+nothing, the error is shown to the model for one corrected attempt.
+The page shows the SQL and the rows under each answer.
+
+## Can the bot reach data in more than one place?
+
+Yes. In a company, information lives in many systems, and this demo
+shows the same idea on a small scale. The bot draws on three sources:
+its own documents, searched by meaning; GitHub, called live for recent
+code changes; and NYC Open Data, queried live with SQL. A web search
+tool is planned as a fourth, to be used only when the documents do not
+cover a question.

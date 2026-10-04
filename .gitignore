@@ -7,5 +7,8 @@
 # Personal Claude Code settings for this machine
 .claude/settings.local.json
 
+# Chroma database - rebuilt from data/ by running: python rag.py
+chroma_db/
+
 # Python's auto-generated compiled files
 __pycache__/

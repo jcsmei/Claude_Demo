@@ -73,6 +73,14 @@ def logged(tool):
     return wrapper
 
 
+class Passage(TypedDict):
+    """The fields of each passage returned by search_documents."""
+
+    text: str
+    source: str
+    distance: float
+
+
 class Answer(TypedDict):
     """The fields returned by ask_documents.
 
@@ -95,11 +103,13 @@ def _collection():
 
 @server.tool()
 @logged
-def search_documents(query: str, k: int = 3) -> list[dict[str, str]]:
+def search_documents(query: str, k: int = 3) -> list[Passage]:
     """Return the document passages most relevant to a query.
 
-    Each passage has its `text` and the `source` file it came from.
-    `k` is the maximum number of passages to return (1 to 10).
+    Each passage has its `text`, the `source` file it came from and
+    its `distance` from the query (0 is identical in meaning, values
+    near 2 are unrelated).  `k` is the maximum number of passages to
+    return (1 to 10).
     """
     # ToolError messages are passed on to the assistant, so it can
     # correct its input; other exceptions are reported only as a crash.
@@ -116,10 +126,13 @@ def ask_documents(question: str) -> Answer:
     """Answer a question using only the project's documents.
 
     Return the `answer` and the `sources` (file names) it drew on.
+    When the documents do not contain the answer, the answer says so
+    and `sources` is empty.
     """
     if not question.strip():
         raise ToolError("question must not be empty")
-    return answer(question, _collection())
+    result = answer(question, _collection())
+    return {"answer": result["answer"], "sources": result["sources"]}
 
 
 if __name__ == "__main__":

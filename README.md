@@ -18,6 +18,7 @@ that ability to AI assistants as tools.
 | `store.py` | Chunks documents, stores them in Chroma, searches them. |
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
 | `mcp_server.py` | Exposes `search_documents` and `ask_documents` as MCP tools, with logging. |
+| `app.py` | A password-protected Streamlit chat page that shows each answer with the passages it was drawn from. |
 | `data/` | The sample documents that get indexed. |
 | `tests/` | Automated tests. They use fakes, so they need no network or API key. |
 | `.mcp.json` | Tells Claude Code how to start the MCP server. |
@@ -54,6 +55,22 @@ The first `python rag.py` downloads Chroma's embedding model (about
 deleted at any time; it is rebuilt from `data/`.
 
 To use a different Groq model, add `GROQ_MODEL=<model id>` to `.env`.
+
+## Chat interface
+
+Add a password of your choice to `.env`, then start the app:
+
+```
+APP_PASSWORD=choose_a_password
+```
+
+```powershell
+streamlit run app.py
+```
+
+The page opens in your browser and stays locked until the password is
+entered; with no `APP_PASSWORD` set, nobody can get in. Each session
+is limited to 20 questions, which `MAX_QUESTIONS` in `.env` changes.
 
 ## Test
 

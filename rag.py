@@ -7,6 +7,13 @@ from store import add_documents, get_collection, search
 
 DATA_FOLDER = Path(__file__).parent / "data"
 
+# The model is told to reply with this marker when the context lacks
+# the answer, so the code can detect a refusal reliably.
+NOT_COVERED_MARKER = "NOT_IN_DOCUMENTS"
+NOT_COVERED_MESSAGE = (
+    "The documents do not contain an answer to this question."
+)
+
 
 def build_prompt(question, chunks):
     """Return a prompt that asks the model to answer from `chunks` only."""
@@ -15,7 +22,8 @@ def build_prompt(question, chunks):
     )
     return (
         "Answer the question using only the context below. If the "
-        "context does not contain the answer, say you do not know.\n\n"
+        "context does not contain the answer, reply with exactly "
+        f"{NOT_COVERED_MARKER} and nothing else.\n\n"
         f"Context:\n{context or '(no documents found)'}\n\n"
         f"Question: {question}"
     )
@@ -24,13 +32,24 @@ def build_prompt(question, chunks):
 def answer(question, collection, client=None, k=3):
     """Retrieve relevant chunks, then ask the model to answer from them.
 
-    Return a dict with the model's `answer` and the list of `sources`
-    (file names) the retrieved chunks came from.
+    Return a dict with:
+    - `answer`: the model's answer, or `NOT_COVERED_MESSAGE`;
+    - `answered`: False when the passages did not contain the answer;
+    - `sources`: the file names the answer drew on (empty when not
+      answered);
+    - `passages`: the retrieved chunks, each with its `text`,
+      `source` and `distance`, kept even when not answered so the
+      caller can show what the search found.
     """
     chunks = search(collection, question, k=k)
     reply = ask(build_prompt(question, chunks), client=client)
-    sources = sorted({chunk["source"] for chunk in chunks})
-    return {"answer": reply, "sources": sources}
+    answered = NOT_COVERED_MARKER not in reply
+    if answered:
+        sources = sorted({chunk["source"] for chunk in chunks})
+    else:
+        reply, sources = NOT_COVERED_MESSAGE, []
+    return {"answer": reply, "answered": answered, "sources": sources,
+            "passages": chunks}
 
 
 if __name__ == "__main__":

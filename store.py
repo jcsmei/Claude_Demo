@@ -75,15 +75,18 @@ def add_documents(collection, folder):
 def search(collection, query, k=3):
     """Return up to `k` chunks closest in meaning to `query`.
 
-    Each result is a dict with the chunk's `text` and its `source`
-    file name, ordered from most to least relevant.
+    Each result is a dict with the chunk's `text`, its `source` file
+    name and its `distance` from the query, ordered from most to least
+    relevant.  A distance of 0 means identical in meaning; values
+    near 2 mean unrelated.
     """
     k = min(k, collection.count())
     if k == 0:
         return []
     results = collection.query(query_texts=[query], n_results=k)
     return [
-        {"text": text, "source": metadata["source"]}
-        for text, metadata in zip(results["documents"][0],
-                                  results["metadatas"][0])
+        {"text": text, "source": metadata["source"], "distance": distance}
+        for text, metadata, distance in zip(results["documents"][0],
+                                            results["metadatas"][0],
+                                            results["distances"][0])
     ]

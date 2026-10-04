@@ -3,9 +3,11 @@
 import uuid
 
 import chromadb
+import pytest
 
 from fakes import FakeClient, FakeEmbedding
-from rag import answer, build_prompt
+from rag import (NOT_COVERED_MARKER, NOT_COVERED_MESSAGE, answer,
+                 build_prompt)
 from store import add_documents, get_collection
 
 
@@ -20,7 +22,13 @@ def test_build_prompt_without_chunks_says_so():
     assert "(no documents found)" in build_prompt("Anything?", [])
 
 
-def test_answer_sends_retrieved_text_and_returns_sources(tmp_path):
+def test_build_prompt_asks_for_the_marker_when_not_covered():
+    assert NOT_COVERED_MARKER in build_prompt("Anything?", [])
+
+
+@pytest.fixture
+def collection(tmp_path):
+    """Return an in-memory collection holding one document."""
     (tmp_path / "space.txt").write_text(
         "Mars is called the red planet.", encoding="utf-8"
     )
@@ -30,10 +38,30 @@ def test_answer_sends_retrieved_text_and_returns_sources(tmp_path):
         embedding_function=FakeEmbedding(),
     )
     add_documents(collection, tmp_path)
+    return collection
+
+
+def test_answer_sends_retrieved_text_and_returns_sources(collection):
     client = FakeClient("Mars.")
 
     result = answer("Which is the red planet?", collection, client=client)
 
-    assert result == {"answer": "Mars.", "sources": ["space.txt"]}
+    assert result["answer"] == "Mars."
+    assert result["answered"] is True
+    assert result["sources"] == ["space.txt"]
+    (passage,) = result["passages"]
+    assert passage["text"] == "Mars is called the red planet."
+    assert passage["distance"] >= 0
     sent = client.received["messages"][0]["content"]
     assert "Mars is called the red planet." in sent
+
+
+def test_answer_reports_when_the_documents_lack_the_answer(collection):
+    client = FakeClient(f" {NOT_COVERED_MARKER}\n")
+
+    result = answer("Who won the World Cup?", collection, client=client)
+
+    assert result["answer"] == NOT_COVERED_MESSAGE
+    assert result["answered"] is False
+    assert result["sources"] == []
+    assert len(result["passages"]) == 1

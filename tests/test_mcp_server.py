@@ -58,9 +58,10 @@ def test_server_lists_both_tools():
 def test_search_documents_returns_the_best_passage():
     result = call("search_documents", {"query": "red planet", "k": 1})
     assert not result.is_error
-    assert result.structured_content == {"result": [
-        {"text": "Mars is called the red planet.", "source": "space.txt"}
-    ]}
+    (passage,) = result.structured_content["result"]
+    assert passage["text"] == "Mars is called the red planet."
+    assert passage["source"] == "space.txt"
+    assert passage["distance"] >= 0
 
 
 @pytest.mark.parametrize("arguments, message", [
@@ -80,6 +81,19 @@ def test_ask_documents_returns_answer_and_sources():
     assert result.structured_content == {
         "answer": "Mars.",
         "sources": ["pets.txt", "space.txt"],
+    }
+
+
+def test_ask_documents_says_when_the_documents_lack_the_answer(
+        monkeypatch):
+    monkeypatch.setattr(
+        rag, "ask", lambda prompt, client=None: rag.NOT_COVERED_MARKER
+    )
+    result = call("ask_documents", {"question": "Who won the World Cup?"})
+    assert not result.is_error
+    assert result.structured_content == {
+        "answer": rag.NOT_COVERED_MESSAGE,
+        "sources": [],
     }
 
 

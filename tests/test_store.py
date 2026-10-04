@@ -60,10 +60,17 @@ def test_add_documents_twice_does_not_duplicate(collection, folder):
 
 def test_search_returns_the_most_relevant_chunk_first(collection, folder):
     add_documents(collection, folder)
-    results = search(collection, "Which planet is the red planet?", k=1)
-    assert results == [
-        {"text": "Mars is called the red planet.", "source": "space.txt"}
-    ]
+    (result,) = search(collection, "Which planet is the red planet?", k=1)
+    assert result["text"] == "Mars is called the red planet."
+    assert result["source"] == "space.txt"
+
+
+def test_search_orders_results_by_increasing_distance(collection, folder):
+    add_documents(collection, folder)
+    results = search(collection, "Which planet is the red planet?", k=2)
+    distances = [result["distance"] for result in results]
+    assert len(distances) == 2
+    assert 0 <= distances[0] <= distances[1]
 
 
 def test_search_on_an_empty_collection_returns_nothing(collection):

@@ -91,6 +91,8 @@ CASES = [
      "draws on three sources"),
     ("Did testing ever break the live app?", "daily allowance"),
     ("Is there a daily limit?", "200,000 tokens per day"),
+    ("What happens when the tokens run out?",
+     "sends the same question to a second model"),
     # The creator
     ("Who built this demo, and what is his background?",
      "technical solutions architect based in New York"),

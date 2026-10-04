@@ -151,6 +151,39 @@ such as "summarise every document". An answer split across chunks can
 be missed if only part is retrieved. And the model trusts the
 documents, so a wrong document gives a confidently wrong answer.
 
+## Does the bot remember the conversation and handle follow-up questions?
+
+Yes. The last two exchanges of the conversation are included in the
+prompt, so the model knows what a follow-up refers to. If you say you
+did not understand, it explains the same facts again more simply. The
+memory lasts only for the current visit; nothing is stored afterwards.
+
+## How does the bot search for a follow-up question? What is query rewriting?
+
+A follow-up such as "What tools does it have?" means nothing to the
+search on its own. So before searching, the language model rewrites
+the follow-up into a standalone question, for example "What tools does
+the MCP server have?". This is called query rewriting. It costs one
+small extra model call, and only on follow-ups. The page shows the
+rewritten question with the retrieved passages.
+
+## What happens when a message is a greeting, thanks or unclear?
+
+The model is told to reply with a second fixed marker when a message
+is only a greeting or thanks, or is too unclear to answer. The code
+detects that marker and replies with a short list of what the bot can
+help with. This is different from a real question the documents do
+not cover, such as the capital of France, which is still refused.
+
+## Why is the model's temperature set to 0?
+
+Temperature controls how much randomness the model uses when choosing
+words. At 0 it picks its most likely answer each time. It was set to 0
+after the same question, with the same retrieved passages, listed
+every item on one run and only two on another. A temperature of 0
+makes answers more consistent from run to run; it does not make them
+perfectly identical.
+
 ## How is new information added to the bot?
 
 Add a file ending in .md or .txt to the data folder, or edit an

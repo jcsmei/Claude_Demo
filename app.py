@@ -129,28 +129,34 @@ def describe_error(error):
     return headline, detail
 
 
-def answer_question(question):
+def answer_question(question, history):
     """Return the chat message that answers `question`.
 
-    A failure is logged with its traceback and turned into an error
-    message, so the page keeps working.
+    `history` is the earlier conversation, which lets the bot follow
+    up on what was said before.  A failure is logged with its
+    traceback and turned into an error message, so the page keeps
+    working.
     """
     logger.info("question asked: %s", question)
     try:
         collection = load_collection(documents_fingerprint())
-        result = answer(question, collection)
+        result = answer(question, collection, history=history)
     except Exception as error:
         logger.exception("question failed: %s", question)
         headline, detail = describe_error(error)
         return {"role": "assistant", "content": headline,
                 "detail": detail, "error": True}
     content = result["answer"]
-    if not result["answered"]:
+    if result["status"] == "not_covered":
         content += (" Try a question about the documents listed in "
                     "the sidebar.")
+    # Kept only when a follow-up was rewritten for the search.
+    rewritten = result["search_query"]
+    if rewritten == question:
+        rewritten = None
     return {"role": "assistant", "content": content,
             "passages": result["passages"],
-            "answered": result["answered"]}
+            "status": result["status"], "rewritten": rewritten}
 
 
 def show_message(message):
@@ -163,14 +169,20 @@ def show_message(message):
             return
         st.markdown(message["content"])
         passages = message.get("passages")
-        if not passages:
+        # An unclear message has no answer to trace back to passages.
+        if not passages or message["status"] == "unclear":
             return
-        if message["answered"]:
+        if message["status"] == "answered":
             label = f"Retrieved passages ({len(passages)})"
         else:
             label = ("Closest passages, none with the answer "
                      f"({len(passages)})")
         with st.expander(label):
+            if message.get("rewritten"):
+                st.caption(
+                    "Your message was a follow-up, so it was rewritten "
+                    f"for the search as: \"{message['rewritten']}\""
+                )
             st.caption(
                 "The search found these passages in the documents. "
                 "The model was given them and told to answer from "
@@ -243,9 +255,12 @@ if not messages and not question:
     question = pick_example()
 if question and question.strip() and not limit_reached:
     st.session_state.asked += 1
+    # Failed answers are left out: they say nothing about the topic.
+    history = [message for message in messages
+               if not message.get("error")]
     messages.append({"role": "user", "content": question})
     with st.spinner("Searching the documents..."):
-        messages.append(answer_question(question))
+        messages.append(answer_question(question, history))
     # Redraw from the top so the chat box and the counter reflect the
     # question just asked.
     st.rerun()

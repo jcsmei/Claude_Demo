@@ -68,6 +68,10 @@ APP_PASSWORD=choose_a_password
 streamlit run app.py
 ```
 
+The bot remembers the last two exchanges, so follow-up questions such
+as "what tools does it have?" work, and each answer lists the passages
+it was drawn from with their distances.
+
 The page opens in your browser and stays locked until the password is
 entered; with no `APP_PASSWORD` set, nobody can get in. Each session
 is limited to 20 questions, which `MAX_QUESTIONS` in `.env` changes.

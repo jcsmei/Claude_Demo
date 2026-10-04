@@ -56,8 +56,8 @@ CASES = [
     ("What is this chat bot, and how does it know about itself?",
      "self-awareness is retrieval"),
     # Problems found and fixed
-    ("What problems did the project run into?", "eleven problems"),
-    ("What bugs did you find?", "eleven problems"),
+    ("What problems did the project run into?", "thirteen problems"),
+    ("What bugs did you find?", "thirteen problems"),
     ("What is the STAR format?", "Situation, Task, Action, Result"),
     ("What was the biggest lesson learned?", "running the real system"),
     ("Why did the live app show old answers?", "fingerprint"),
@@ -66,6 +66,13 @@ CASES = [
     ("Did the bot ever give a wrong answer?", "approximately seven"),
     ("How do you catch regressions in retrieval?", "over 40 real"),
     ("What happened with the MCP library version?", "MCPServer"),
+    ("Why did the answers feel rigid?", "no conversation memory"),
+    # Conversation
+    ("Does the bot remember the conversation?", "last two exchanges"),
+    ("What is query rewriting?", "This is called query rewriting"),
+    ("What happens if I just say hi?", "second fixed marker"),
+    ("Why is the temperature 0?", "most likely answer each time"),
+    ("Is there a rate limit?", "8,000 tokens per minute"),
     # The creator
     ("Who built this demo, and what is his background?",
      "technical solutions architect based in New York"),

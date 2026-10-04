@@ -146,6 +146,29 @@ def test_history_keeps_earlier_questions(app):
     assert asked == ["First question?", "Second question?"]
 
 
+def test_index_is_rebuilt_only_when_a_document_changes(
+        app, monkeypatch, tmp_path):
+    document = tmp_path / "notes.md"
+    document.write_text("Old text.", encoding="utf-8")
+    indexed = []
+    monkeypatch.setattr(rag, "DATA_FOLDER", tmp_path)
+    monkeypatch.setattr(
+        store, "add_documents",
+        lambda collection, folder: indexed.append(document.read_text()),
+    )
+    monkeypatch.setenv("MAX_QUESTIONS", "5")
+    log_in(app)
+
+    ask(app, "First question?")
+    ask(app, "Second question?")
+    assert indexed == ["Old text."]
+
+    document.write_text("New text.", encoding="utf-8")
+    ask(app, "Third question?")
+    assert indexed == ["Old text.", "New text."]
+    assert not app.exception
+
+
 def test_chat_is_disabled_at_the_question_limit(app):
     log_in(app)
     ask(app, "First question?")

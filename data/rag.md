@@ -126,7 +126,7 @@ documents, and updating a document updates the answers with no
 retraining. Access control: the company decides which documents the
 bot can search.
 
-## What happens when the documents do not contain the answer?
+## Why does the bot refuse some questions it cannot answer?
 
 The prompt tells the model to reply with a fixed marker when the
 retrieved chunks do not contain the answer. The code detects the

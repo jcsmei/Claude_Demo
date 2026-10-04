@@ -46,12 +46,13 @@ project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about four subjects, one per document. How RAG works:
+You can ask about five subjects, one per document. How RAG works:
 chunks, embeddings, distance and why the bot refuses some questions.
 What MCP is and which tools this project's MCP server offers. The
 project itself: which language model it uses, how it was built and why
-each decision was made. And Jack Mei, its creator: his experience,
-skills and how to contact him.
+each decision was made. Jack Mei, its creator: his experience, skills
+and how to contact him. And the problems the project ran into, with
+how each one was found and fixed.
 
 ## What are the parts of this project?
 
@@ -91,9 +92,9 @@ hosted by Groq can be used without changing any code. Because the
 knowledge lives in the documents and not in the model, swapping the
 model does not change what the bot knows.
 
-## What is Blue Heron?
+## What is the project's codename, Blue Heron?
 
-Blue Heron is the internal codename of this demo. The codename was
+The project's codename is Blue Heron. The codename was
 invented on purpose as a fact that no language model could know from
 its training. When the bot answers "Blue Heron", it proves the answer
 came from the documents and not from the model's memory.

@@ -81,6 +81,12 @@ python -m pytest -q
 Use this exact form: `python -m pytest` lets the tests find the
 project's modules, where plain `pytest` does not.
 
+`tests/test_retrieval.py` is the exception to "no network": it uses
+the real embedding model (downloaded once) to check that real
+questions still retrieve the passage holding their answer. Run the
+tests after every change to `data/`, because a new passage can push an
+older one out of the results.
+
 ## Use the MCP server from Claude Code
 
 Open this folder in Claude Code and approve the `rag-demo` server when

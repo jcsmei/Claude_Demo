@@ -14,6 +14,7 @@ from mcp import Client
 
 import mcp_server
 import rag
+import tools
 from fakes import FakeEmbedding
 from store import add_documents, get_collection
 
@@ -47,12 +48,13 @@ def call(tool, arguments):
     return asyncio.run(run())
 
 
-def test_server_lists_both_tools():
+def test_server_lists_its_tools():
     async def run():
         async with Client(mcp_server.server) as client:
             return await client.list_tools()
     names = {tool.name for tool in asyncio.run(run()).tools}
-    assert names == {"search_documents", "ask_documents"}
+    assert names == {"search_documents", "ask_documents",
+                     "recent_commits"}
 
 
 def test_search_documents_returns_the_best_passage():
@@ -95,6 +97,29 @@ def test_ask_documents_says_when_the_documents_lack_the_answer(
         "answer": rag.NOT_COVERED_MESSAGE,
         "sources": [],
     }
+
+
+def test_recent_commits_returns_the_commits(monkeypatch):
+    commits = [{"sha": "abc1234", "date": "2026-10-04T20:42:40Z",
+                "message": "Add conversation memory",
+                "url": "https://github.com/example/commit/abc1234"}]
+    monkeypatch.setattr(tools, "recent_commits", lambda limit: commits)
+
+    result = call("recent_commits", {"limit": 1})
+
+    assert not result.is_error
+    assert result.structured_content == {"result": commits}
+
+
+def test_recent_commits_explains_a_failure(monkeypatch):
+    def failing(limit):
+        raise tools.ToolFailure("GitHub's rate limit was reached.")
+    monkeypatch.setattr(tools, "recent_commits", failing)
+
+    result = call("recent_commits", {})
+
+    assert result.is_error
+    assert "rate limit was reached" in result.content[0].text
 
 
 def test_successful_call_is_logged(caplog):

@@ -163,8 +163,8 @@ memory lasts only for the current visit; nothing is stored afterwards.
 A follow-up such as "What tools does it have?" means nothing to the
 search on its own. So before searching, the language model rewrites
 the follow-up into a standalone question, for example "What tools does
-the MCP server have?". This is called query rewriting. It costs one
-small extra model call, and only on follow-ups. The page shows the
+the MCP server have?". This is called query rewriting. It is done
+by the same small model call that chooses which tool to use. The page shows the
 rewritten question with the retrieved passages.
 
 ## What happens when a message is a greeting, thanks or unclear?

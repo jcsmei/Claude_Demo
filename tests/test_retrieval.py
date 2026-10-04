@@ -37,9 +37,10 @@ CASES = [
     # MCP
     ("What is MCP?", "stands for Model Context Protocol"),
     ("What tools does the MCP server have?",
-     "two tools: search_documents and ask_documents"),
+     "three tools: search_documents, ask_documents and"),
     ("What does search_documents return?", "a number k from 1 to 10"),
-    ("Why are there two MCP tools?", "serve different callers"),
+    ("Why are search and ask separate MCP tools?",
+     "serve different callers"),
     ("Does the chat page use MCP?", "calls the RAG code directly"),
     ("What does the MCP server log?", "logs/mcp_server.log"),
     # The project
@@ -73,6 +74,11 @@ CASES = [
     ("What happens if I just say hi?", "second fixed marker"),
     ("Why is the temperature 0?", "most likely answer each time"),
     ("Is there a rate limit?", "8,000 tokens per minute"),
+    ("What does the recent_commits tool do?", "newest first"),
+    ("How does the bot choose which tool to use?",
+     "first chooses a tool"),
+    ("Can the bot tell me what changed recently?",
+     "live commit history"),
     # The creator
     ("Who built this demo, and what is his background?",
      "technical solutions architect based in New York"),

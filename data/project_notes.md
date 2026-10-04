@@ -56,11 +56,13 @@ how each one was found and fixed.
 
 ## What are the parts of this project?
 
-The project has five main code files. llm.py sends a question to the
+The project has seven main code files. llm.py sends a question to the
 language model. store.py splits documents into chunks, stores them in
 Chroma and searches them. rag.py joins the two: it retrieves chunks
-and asks the model to answer from them. mcp_server.py offers this to
-AI assistants as tools. app.py is the chat page.
+and asks the model to answer from them. tools.py fetches live
+information from outside, such as GitHub. chat.py chooses which tool
+fits each message. mcp_server.py offers the tools to AI assistants.
+app.py is the chat page.
 
 ## Which language model (LLM) does this bot use?
 
@@ -176,3 +178,19 @@ uses roughly 1,100 to 1,500 tokens, mostly the retrieved passages, so
 about six questions per minute can be answered across all visitors.
 Beyond that the page says the rate limit was reached and asks the
 visitor to wait a minute.
+
+## How does the bot choose which tool to use?
+
+For every message, the language model first chooses a tool: the
+project's documents, or GitHub for questions about recent code
+changes. The same call rewrites a follow-up into a standalone
+question. The chosen tool then fetches its information and the model
+answers from it. Each answer names its source underneath, so the
+reader always knows whether it came from the documents or from GitHub.
+
+## Can the bot tell me what changed in the code recently?
+
+Yes. Questions such as "What changed in the code most recently?" are
+answered from the project's live commit history on GitHub, not from
+the documents. The answer lists the commits it was drawn from, each
+with a link.

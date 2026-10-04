@@ -14,7 +14,9 @@ import groq
 import streamlit as st
 from dotenv import load_dotenv
 
-from rag import DATA_FOLDER, answer
+from chat import respond
+from rag import DATA_FOLDER
+from tools import ToolFailure
 from store import DOCUMENT_SUFFIXES, add_documents, get_collection
 
 load_dotenv()
@@ -27,7 +29,13 @@ EXAMPLE_QUESTIONS = (
     "What tools does the MCP server have?",
     "Which language model writes the answers, and why that one?",
     "Who built this demo, and what is his background?",
+    "What changed in the code most recently?",
 )
+# Shown under each answer, so the viewer knows where it came from.
+SOURCE_LABELS = {
+    "documents": "Source: the project's documents",
+    "github": "Source: GitHub, the project's live commit history",
+}
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")
 
@@ -105,7 +113,9 @@ def describe_error(error):
     secret values removed.
     """
     # Specific Groq errors come before APIStatusError, their parent.
-    if isinstance(error, groq.RateLimitError):
+    if isinstance(error, ToolFailure):
+        headline = f"A tool failed: {error}"
+    elif isinstance(error, groq.RateLimitError):
         headline = ("Generation failed: Groq's rate limit was reached. "
                     "Wait a minute, then ask again.")
     elif isinstance(error, groq.AuthenticationError):
@@ -140,7 +150,7 @@ def answer_question(question, history):
     logger.info("question asked: %s", question)
     try:
         collection = load_collection(documents_fingerprint())
-        result = answer(question, collection, history=history)
+        result = respond(question, collection, history=history)
     except Exception as error:
         logger.exception("question failed: %s", question)
         headline, detail = describe_error(error)
@@ -156,7 +166,25 @@ def answer_question(question, history):
         rewritten = None
     return {"role": "assistant", "content": content,
             "passages": result["passages"],
-            "status": result["status"], "rewritten": rewritten}
+            "commits": result.get("commits"),
+            "status": result["status"], "tool": result["tool"],
+            "rewritten": rewritten}
+
+
+def show_commits(commits):
+    """List the commits a GitHub answer was drawn from."""
+    with st.expander(f"Commits fetched from GitHub ({len(commits)})"):
+        st.caption(
+            "These are the project's most recent code changes, "
+            "fetched live from GitHub's public API. The model was "
+            "given this list and told to answer from it only."
+        )
+        for commit in commits:
+            st.markdown(
+                f"- {commit['date'][:10]} · "
+                f"[{commit['sha']}]({commit['url']}) · "
+                f"{commit['message']}"
+            )
 
 
 def show_message(message):
@@ -168,6 +196,13 @@ def show_message(message):
                 st.code(message["detail"], language=None)
             return
         st.markdown(message["content"])
+        # Only the bot's answers have a source; a visitor's own
+        # message and the reply to an unclear one do not.
+        if message.get("tool") and message["status"] != "unclear":
+            st.caption(SOURCE_LABELS[message["tool"]])
+        if message.get("commits"):
+            show_commits(message["commits"])
+            return
         passages = message.get("passages")
         # An unclear message has no answer to trace back to passages.
         if not passages or message["status"] == "unclear":

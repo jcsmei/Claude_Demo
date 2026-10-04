@@ -2,11 +2,12 @@
 
 ## What is this project?
 
-This project is a small learning demo of two ideas: RAG
-(retrieval-augmented generation) and MCP (Model Context Protocol). It
-answers questions from a small folder of documents, shows the passages
-each answer came from, and offers the same ability to AI assistants as
-tools. It was started in October 2026.
+This project is a small learning demo of three ideas: RAG (retrieval-
+augmented generation), MCP (Model Context Protocol) and LangGraph. It
+answers questions from a small folder of documents and from two live
+sources, GitHub and NYC Open Data, shows the evidence each answer came
+from, and offers the same abilities to AI assistants as tools. It was
+started in October 2026.
 
 ## Who created this demo?
 
@@ -46,13 +47,13 @@ project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about five subjects, one per document. How RAG works:
-chunks, embeddings, distance and why the bot refuses some questions.
-What MCP is and which tools this project's MCP server offers. The
-project itself: which language model it uses, how it was built and why
-each decision was made. Jack Mei, its creator: his experience, skills
-and how to contact him. And the problems the project ran into, with
-how each one was found and fixed.
+You can ask about five subjects in its documents: how RAG works, what
+MCP is and which tools the project's MCP server offers, the project
+itself and why each decision was made, the problems that were found
+and fixed, and Jack Mei, its creator. You can also ask two things it
+answers from live sources: what changed in the code recently, from
+GitHub, and how many New York City medallion taxi drivers hold an
+active license and when those licenses expire, from NYC Open Data.
 
 ## What are the parts of this project?
 
@@ -113,16 +114,20 @@ prove that retrieval works.
 One component at a time, each tested before the next was started:
 first the call to the language model, then storage and search in
 Chroma, then the two joined as RAG, then the MCP server, then the chat
-page. Building this way means that when something breaks, the fault is
-in the one piece just added.
+page. After that came conversation memory, the GitHub tool with tool
+choice, the rebuild of the decision flow on LangGraph, and the SQL
+tool for NYC Open Data. Building this way means that when something
+breaks, the fault is in the one piece just added.
 
 ## How is the project tested?
 
-The project has more than 40 automated tests, run with pytest. The
-tests replace the language model and the embedding model with simple
-fakes, so they need no internet, cost nothing and give the same result
-every time. Live runs against the real services were done separately,
-and they caught bugs the fakes could not.
+The project has more than 180 automated tests, run with pytest. The
+tests replace the language model, the embedding model, GitHub and NYC
+Open Data with simple fakes, so they need no internet, cost nothing
+and give the same result every time. A separate set of tests checks
+retrieval with real questions and the real embedding model. Live runs
+against the real services were done as well, and they caught bugs the
+fakes could not.
 
 ## How are the API key and password kept safe?
 
@@ -173,12 +178,13 @@ Streamlit 1.65.0 for the chat page, and pytest for the tests.
 
 ## Is there a rate limit on questions?
 
-Yes. Besides the limit of 20 questions per visit, the project's Groq
-account allows 8,000 tokens per minute on its free tier. A question
-uses roughly 1,100 to 1,500 tokens, mostly the retrieved passages, so
-about six questions per minute can be answered across all visitors.
-Beyond that the page says the rate limit was reached and asks the
-visitor to wait a minute.
+Yes, three limits apply. Each visit is limited to 20 questions. The
+project's Groq account, on the free tier, allows 8,000 tokens per
+minute and 200,000 tokens per day. A chat message uses roughly 2,500
+to 4,000 tokens across two or three model calls, so about 50 to 80
+messages can be answered per day across all visitors. When a limit is
+reached, the page says which one and whether to wait a minute or to
+try again later.
 
 ## How does the bot choose which tool to use?
 

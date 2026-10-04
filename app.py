@@ -25,6 +25,7 @@ EXAMPLE_QUESTIONS = (
     "What is a chunk, and why are documents split into chunks?",
     "What tools does the MCP server have?",
     "Which language model writes the answers, and why that one?",
+    "Who built this demo, and what is his background?",
 )
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")

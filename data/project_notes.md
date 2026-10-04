@@ -13,28 +13,45 @@ tools. It was started in October 2026.
 The creator and developer of this demo is Jack Mei. His LinkedIn
 profile is https://www.linkedin.com/in/jcsmei209/
 
+## How was this project built?
+
+Jack Mei, a solution architect and engineer, built this project using
+Claude Code, an AI coding assistant. Jack acted as the architect: he
+set the goals, chose the technologies, made the design decisions and
+reviewed each step. The assistant wrote the code and the tests and ran
+them. The first working prototype took about three hours.
+
+## Which decisions did the architect make?
+
+Jack Mei made the key decisions: to test each component before
+starting the next, to add logging so that no tool call fails silently,
+to move to Python 3.12 for hosting, to put the chat page behind a
+password, to show technical error details to viewers, and to make the
+bot able to explain itself to any reader, technical or not.
+
 ## Where is the code for this project?
 
 The code is public on GitHub at https://github.com/jcsmei/Claude_Demo/
 The repository holds all the source code, the automated tests, the
-three documents this bot searches, and a README that explains how to
-set up and run the project.
+documents this bot searches, and a README that explains how to set up
+and run the project.
 
 ## What is this chat bot, and how does it know about itself?
 
 This chat bot is the demo's front end. It has no built-in knowledge of
 itself. It can describe how it works only because its own design was
-written down in three documents, and it searches those documents like
+written down in the documents it searches, and it searches them like
 any others. Its self-awareness is retrieval: if a fact about the
 project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about three subjects, one per document. How RAG works:
+You can ask about four subjects, one per document. How RAG works:
 chunks, embeddings, distance and why the bot refuses some questions.
-What MCP is and which tools this project's MCP server offers. And the
+What MCP is and which tools this project's MCP server offers. The
 project itself: which language model it uses, how it was built and why
-each decision was made.
+each decision was made. And Jack Mei, its creator: his experience,
+skills and how to contact him.
 
 ## What are the parts of this project?
 

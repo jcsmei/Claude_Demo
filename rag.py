@@ -21,15 +21,17 @@ def build_prompt(question, chunks):
         f"[{chunk['source']}]\n{chunk['text']}" for chunk in chunks
     )
     return (
-        "Answer the question using only the context below. If the "
-        "context does not contain the answer, reply with exactly "
-        f"{NOT_COVERED_MARKER} and nothing else.\n\n"
+        "Answer the question using only the context below. Answer in "
+        "complete sentences, as if explaining to a curious reader, "
+        "and do not mention the context itself. If the context does "
+        "not contain the answer, reply with only the word "
+        f"{NOT_COVERED_MARKER}.\n\n"
         f"Context:\n{context or '(no documents found)'}\n\n"
         f"Question: {question}"
     )
 
 
-def answer(question, collection, client=None, k=3):
+def answer(question, collection, client=None, k=5):
     """Retrieve relevant chunks, then ask the model to answer from them.
 
     Return a dict with:

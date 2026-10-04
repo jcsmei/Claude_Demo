@@ -20,6 +20,12 @@ load_dotenv()
 logger = logging.getLogger("rag_demo.app")
 
 DEFAULT_MAX_QUESTIONS = "20"
+EXAMPLE_QUESTIONS = (
+    "What is this chat bot, and how does it know about itself?",
+    "What is a chunk, and why are documents split into chunks?",
+    "What tools does the MCP server have?",
+    "Which language model writes the answers, and why that one?",
+)
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")
 
@@ -159,6 +165,15 @@ def show_message(message):
                 st.text(passage["text"])
 
 
+def pick_example():
+    """Offer example questions and return the one clicked, if any."""
+    st.markdown("**New here? Try one of these questions:**")
+    for example in EXAMPLE_QUESTIONS:
+        if st.button(example):
+            return example
+    return None
+
+
 def show_sidebar(remaining):
     """Explain how the demo works and show what is left to ask."""
     with st.sidebar:
@@ -169,6 +184,16 @@ def show_sidebar(remaining):
             "fetched.\n"
             "2. **Augment:** those chunks are placed in the prompt.\n"
             "3. **Generate:** the model answers from them only."
+        )
+        st.header("Key terms")
+        st.markdown(
+            "- **Chunk:** a small piece of a document, a paragraph "
+            "or two, like an index card holding one idea.\n"
+            "- **Embedding:** a list of numbers that represents the "
+            "meaning of a chunk or a question.\n"
+            "- **Distance:** how far apart a chunk and the question "
+            "are in meaning. Lower is closer: 0 is identical, and "
+            "near 2 is unrelated."
         )
         st.header("Documents")
         for path in sorted(DATA_FOLDER.iterdir()):
@@ -193,6 +218,8 @@ limit_reached = st.session_state.asked >= max_questions
 question = st.chat_input(
     "Ask a question about the documents", disabled=limit_reached
 )
+if not messages and not question:
+    question = pick_example()
 if question and question.strip() and not limit_reached:
     st.session_state.asked += 1
     messages.append({"role": "user", "content": question})

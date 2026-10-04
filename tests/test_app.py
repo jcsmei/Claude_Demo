@@ -119,6 +119,25 @@ def test_unanswerable_question_is_explained(app, monkeypatch):
     assert len(reply.error) == 0
 
 
+def test_clicking_an_example_question_asks_it(app):
+    log_in(app)
+    example = app.button[0].label
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert app.chat_message[0].markdown[0].value == example
+    assert app.chat_message[1].markdown[0].value == "Mars."
+    # The examples are only offered before the first question.
+    assert len(app.button) == 0
+
+
+def test_sidebar_explains_the_key_terms(app):
+    log_in(app)
+    sidebar_text = " ".join(m.value for m in app.sidebar.markdown)
+    for term in ("Chunk", "Embedding", "Distance"):
+        assert f"**{term}:**" in sidebar_text
+
+
 def test_history_keeps_earlier_questions(app):
     log_in(app)
     ask(app, "First question?")

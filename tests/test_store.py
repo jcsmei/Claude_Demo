@@ -47,6 +47,21 @@ def test_chunk_text_skips_blank_paragraphs():
     assert chunk_text("") == []
 
 
+def test_chunk_text_starts_a_new_chunk_at_each_heading():
+    text = "## One\n\nFirst.\n\nMore.\n\n## Two\n\nSecond."
+    assert chunk_text(text, max_chars=100) == [
+        "## One\n\nFirst.\n\nMore.",
+        "## Two\n\nSecond.",
+    ]
+
+
+def test_chunk_text_keeps_a_heading_with_what_follows_it():
+    # The title joins the first section, and a heading stays with its
+    # paragraph even when together they pass the limit.
+    text = "# Title\n\n## One\n\n" + "a" * 30
+    assert chunk_text(text, max_chars=20) == [text]
+
+
 def test_add_documents_stores_only_supported_files(collection, folder):
     assert add_documents(collection, folder) == 2
     assert collection.count() == 2
@@ -56,6 +71,17 @@ def test_add_documents_twice_does_not_duplicate(collection, folder):
     add_documents(collection, folder)
     add_documents(collection, folder)
     assert collection.count() == 2
+
+
+def test_add_documents_removes_chunks_of_deleted_text(collection, folder):
+    add_documents(collection, folder)
+    (folder / "space.txt").unlink()
+    (folder / "pets.md").write_text("Cats sleep.", encoding="utf-8")
+
+    assert add_documents(collection, folder) == 1
+    stored = collection.get()
+    assert stored["ids"] == ["pets.md-0"]
+    assert stored["documents"] == ["Cats sleep."]
 
 
 def test_search_returns_the_most_relevant_chunk_first(collection, folder):

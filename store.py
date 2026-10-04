@@ -17,20 +17,28 @@ def chunk_text(text, max_chars=500):
     Paragraphs (separated by blank lines) are packed together until
     adding another would exceed `max_chars`.  A single paragraph longer
     than `max_chars` is kept whole rather than cut mid-sentence.
+
+    A Markdown heading (a paragraph starting with "#") starts a new
+    chunk, so each chunk covers one topic.  A heading is never
+    separated from the paragraph that follows it.
     """
     chunks = []
     current = ""
+    after_heading = False
     for paragraph in text.split("\n\n"):
         paragraph = paragraph.strip()
         if not paragraph:
             continue
-        if current and len(current) + len(paragraph) + 2 > max_chars:
+        is_heading = paragraph.startswith("#")
+        too_long = len(current) + len(paragraph) + 2 > max_chars
+        if current and not after_heading and (is_heading or too_long):
             chunks.append(current)
             current = paragraph
         elif current:
             current = f"{current}\n\n{paragraph}"
         else:
             current = paragraph
+        after_heading = is_heading
     if current:
         chunks.append(current)
     return chunks
@@ -56,7 +64,9 @@ def add_documents(collection, folder):
 
     Return the number of chunks stored.  Each chunk's ID is built from
     its file name and position, so loading the same folder again
-    updates the existing chunks instead of duplicating them.
+    updates the existing chunks instead of duplicating them.  The
+    folder is the source of truth: stored chunks that are no longer
+    in it, from shortened or removed documents, are deleted.
     """
     ids, documents, metadatas = [], [], []
     for path in sorted(Path(folder).iterdir()):
@@ -67,6 +77,9 @@ def add_documents(collection, folder):
             ids.append(f"{path.name}-{position}")
             documents.append(chunk)
             metadatas.append({"source": path.name})
+    stale = set(collection.get(include=[])["ids"]) - set(ids)
+    if stale:
+        collection.delete(ids=sorted(stale))
     if ids:
         collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
     return len(ids)

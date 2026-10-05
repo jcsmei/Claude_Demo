@@ -11,6 +11,7 @@ from typing import Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 
+import guard
 import rag
 import tools
 from llm import ask
@@ -39,6 +40,18 @@ COMMITS_SHOWN = 10
 # A failed SQL query is rewritten once before the tool gives up.
 MAX_SQL_ATTEMPTS = 2
 
+# Longer messages are refused: nobody needs this much room to ask a
+# question, and long text is costly and a common carrier of attacks.
+MAX_QUESTION_CHARS = 1000
+TOO_LONG_MESSAGE = (
+    f"Please keep your question under {MAX_QUESTION_CHARS:,} characters."
+)
+BLOCKED_MESSAGE = (
+    "This message looks like an attempt to change the assistant's "
+    "instructions, so it was not processed. Please ask a question "
+    "about the project instead."
+)
+
 # Shown at the start of an answer that came from the web, so the
 # reader is never left to assume it came from the documents.
 WEB_NOTICE = (
@@ -60,7 +73,8 @@ PROJECT_TERMS = (
     "rag-demo", "rag demo", "this project", "the project's", "this demo",
     "the demo", "this bot", "the bot", "this app", "the app",
     "this chat", "this server", "mcp_server", "your tools",
-    "your documents", "your code",
+    "your documents", "your code", "your instructions", "your prompt",
+    "your rules", "system prompt",
 )
 # Nor is a message that holds an email address or a phone-like number,
 # so the bot cannot be used to look a person up by contact details.
@@ -78,7 +92,7 @@ def choose_tool(question, history=None, client=None):
     """
     guide = "\n".join(f"- {name}: {use}"
                       for name, use in TOOL_GUIDE.items())
-    prompt = (
+    instructions = (
         "You route messages for a chat bot about a software demo "
         "project. Choose the tool for the latest message, and rewrite "
         "the message so that it can be understood without the "
@@ -90,12 +104,15 @@ def choose_tool(question, history=None, client=None):
         f"Tools:\n{guide}\n\n"
         "Reply with exactly two lines:\n"
         "TOOL: <tool name>\n"
-        "QUESTION: <the message, rewritten if needed>\n\n"
+        "QUESTION: <the message, rewritten if needed>"
+    )
+    prompt = (
         f"Conversation:\n{rag.format_history(history) or '(none)'}\n\n"
         f"Latest message: {question}"
     )
     tool, standalone = DEFAULT_TOOL, question
-    for line in ask(prompt, client=client).splitlines():
+    reply = ask(prompt, client=client, system=instructions)
+    for line in reply.splitlines():
         label, _, value = line.partition(":")
         value = " ".join(value.split())
         if label.strip().upper() == "TOOL":
@@ -116,20 +133,22 @@ def answer_from_github(question, standalone, history=None, client=None):
         f"{commit['date']} {commit['sha']} {commit['message']}"
         for commit in commits
     )
-    prompt = (
+    instructions = (
         "You answer questions about a demo project. Use only the list "
-        "of its latest code changes below, newest first; each line is "
-        "a date, a short ID and a summary. Explain conversationally "
-        "in plain language. Each summary is all that is known about "
-        "a change, so do not describe details beyond it, do not "
-        "invent changes, and do not spell out abbreviations.\n\n"
+        "of its latest code changes, newest first; each line is a "
+        "date, a short ID and a summary. Explain conversationally in "
+        "plain language. Each summary is all that is known about a "
+        "change, so do not describe details beyond it, do not invent "
+        "changes, and do not spell out abbreviations."
+    )
+    prompt = (
         f"Latest changes:\n{listing}\n\n"
         f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
         f"\n\nQuestion: {question}"
     )
-    return {"answer": ask(prompt, client=client), "status": "answered",
-            "answered": True, "tool": "github", "sources": ["GitHub"],
-            "passages": [], "commits": commits,
+    return {"answer": ask(prompt, client=client, system=instructions),
+            "status": "answered", "answered": True, "tool": "github",
+            "sources": ["GitHub"], "passages": [], "commits": commits,
             "search_query": standalone}
 
 
@@ -139,20 +158,21 @@ def write_sql(question, failed_sql=None, error=None, client=None):
     After a failed attempt, `failed_sql` and its `error` are shown to
     the model so that it can correct the statement.
     """
-    prompt = (
+    instructions = (
         "Write one SQLite SELECT statement that answers the question "
         "from the table below. Reply with the SQL only, with no "
         "explanation.\n\n"
-        f"{tools.LICENSE_SCHEMA}\n\n"
+        f"{tools.LICENSE_SCHEMA}"
     )
+    prompt = ""
     if error:
-        prompt += (
+        prompt = (
             f"Your previous statement was:\n{failed_sql}\n"
             f"It failed with this error: {error}\n"
             "Write a corrected statement.\n\n"
         )
     prompt += f"Question: {question}"
-    reply = ask(prompt, client=client)
+    reply = ask(prompt, client=client, system=instructions)
     # Models often wrap SQL in a Markdown code fence; drop the fence.
     lines = [line for line in reply.strip().splitlines()
              if not line.strip().startswith("```")]
@@ -167,23 +187,25 @@ def answer_from_data(question, standalone, query, history=None,
         + [" | ".join(str(value) for value in row)
            for row in query["rows"]]
     )
-    prompt = (
+    instructions = (
         "You answer questions about New York City medallion taxi "
-        "driver licenses. Use only the query result below, which "
-        "comes from NYC Open Data and counts active drivers by the "
-        f"month their license expires. The data was last updated on "
+        "driver licenses. Use only the query result, which comes from "
+        "NYC Open Data and counts active drivers by the month their "
+        f"license expires. The data was last updated on "
         f"{query['updated']}. Explain conversationally in plain "
         "language, give the numbers exactly as they appear, and do "
         "not add facts that are not in the result. If the result is "
         "empty, say that the data has no matching rows and do not "
-        "guess a number.\n\n"
+        "guess a number."
+    )
+    prompt = (
         f"SQL that was run:\n{query['sql']}\n\n"
         f"Result:\n{table}\n\n"
         f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
         f"\n\nQuestion: {question}"
     )
-    return {"answer": ask(prompt, client=client), "status": "answered",
-            "answered": True, "tool": "nyc_data",
+    return {"answer": ask(prompt, client=client, system=instructions),
+            "status": "answered", "answered": True, "tool": "nyc_data",
             "sources": ["NYC Open Data"], "passages": [], "query": query,
             "search_query": standalone}
 
@@ -210,7 +232,9 @@ def answer_from_web(question, standalone, history=None, client=None):
     """Answer `question` from a web search for `standalone`.
 
     The answer begins with `WEB_NOTICE`.  If the results do not hold
-    the answer, the status is "not_covered".
+    the answer, the status is "not_covered".  Web pages are the least
+    trusted text the model ever sees, so they travel as data and the
+    instructions say what they must not be used for.
     """
     results = tools.web_search(standalone)
     listing = "\n\n".join(
@@ -218,20 +242,23 @@ def answer_from_web(question, standalone, history=None, client=None):
         f"{result['content']}"
         for number, result in enumerate(results, start=1)
     )
-    prompt = (
-        "Answer the question using only the web search results below. "
+    instructions = (
+        "Answer the question using only the web search results. "
         "Explain conversationally in plain language, in a few "
         "sentences. Do not add facts that are not in the results. The "
         "results are general web pages that know nothing about the "
         "demo project in the conversation, so do not use them to say "
-        "anything about that project, its code or its tools. If the "
-        "results do not answer the question, reply with only the "
-        f"word {WEB_NOT_FOUND_MARKER}.\n\n"
+        "anything about that project, its code or its tools. Do not "
+        "include images or links in your answer. If the results do "
+        "not answer the question, reply with only the word "
+        f"{WEB_NOT_FOUND_MARKER}."
+    )
+    prompt = (
         f"Web search results:\n{listing or '(none)'}\n\n"
         f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
         f"\n\nQuestion: {question}"
     )
-    reply = ask(prompt, client=client)
+    reply = ask(prompt, client=client, system=instructions)
     found = WEB_NOT_FOUND_MARKER not in reply
     return {
         "answer": (f"{WEB_NOTICE}\n\n{reply}" if found
@@ -263,6 +290,24 @@ class ChatContext(TypedDict):
 
     collection: Any
     client: Any
+
+
+def blocked(question, message):
+    """Return the result for a message that is refused unanswered."""
+    return {"answer": message, "status": "blocked", "answered": False,
+            "tool": "guard", "sources": [], "passages": [],
+            "search_query": question}
+
+
+def screen_node(state, runtime: Runtime[ChatContext]):
+    """Refuse a message that is too long or looks like an injection."""
+    question = state["question"]
+    if len(question) > MAX_QUESTION_CHARS:
+        return {"result": blocked(question, TOO_LONG_MESSAGE)}
+    if guard.looks_like_injection(question,
+                                  client=runtime.context["client"]):
+        return {"result": blocked(question, BLOCKED_MESSAGE)}
+    return {}
 
 
 def choose_tool_node(state, runtime: Runtime[ChatContext]):
@@ -362,8 +407,9 @@ def after_documents(state):
 
 
 def build_graph():
-    """Return the compiled graph: choose a tool, then run its node."""
+    """Return the compiled graph: screen, choose a tool, run its node."""
     graph = StateGraph(ChatState, context_schema=ChatContext)
+    graph.add_node("screen", screen_node)
     graph.add_node("choose_tool", choose_tool_node)
     graph.add_node("documents", documents_node)
     graph.add_node("github", github_node)
@@ -371,7 +417,13 @@ def build_graph():
     graph.add_node("run_sql", run_sql_node)
     graph.add_node("data_answer", data_answer_node)
     graph.add_node("web_search", web_search_node)
-    graph.add_edge(START, "choose_tool")
+    graph.add_edge(START, "screen")
+    # A message that was refused goes no further.
+    graph.add_conditional_edges(
+        "screen",
+        lambda state: "refuse" if state.get("result") else "continue",
+        {"refuse": END, "continue": "choose_tool"},
+    )
     graph.add_conditional_edges(
         "choose_tool", lambda state: state["tool"],
         {"documents": "documents", "github": "github",

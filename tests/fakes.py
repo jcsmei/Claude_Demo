@@ -64,3 +64,12 @@ class FakeEmbedding(EmbeddingFunction):
                     vector[index] += 1.0
             vectors.append(vector)
         return vectors
+
+
+def prompt_text(call):
+    """Return everything sent to the model in one call, as one text.
+
+    Instructions travel in the system message and data in the user
+    message; this joins them, with the user message last.
+    """
+    return "\n\n".join(message["content"] for message in call["messages"])

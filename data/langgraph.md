@@ -37,16 +37,18 @@ just happened. The whole flowchart is called a graph.
 
 ## What are the steps in this bot's graph?
 
-This bot's graph has seven nodes. choose_tool decides which source
-fits the message. documents answers from the project's documents.
-web_search answers from the web when the documents do not cover the
-question. github answers from the project's recent code changes.
-write_sql writes a database query for the taxi data, run_sql runs it,
-and data_answer explains the result.
+This bot's graph has eight nodes. screen refuses a message that is too
+long or looks like a prompt injection. choose_tool decides which
+source fits the message. documents answers from the project's
+documents. web_search answers from the web when the documents do not
+cover the question. github answers from the project's recent code
+changes. write_sql writes a database query for the taxi data, run_sql
+runs it, and data_answer explains the result.
 
 ## Where does the graph make decisions?
 
-The graph makes three decisions, each a conditional edge. After
+The graph makes four decisions, each a conditional edge. After screen,
+a refused message ends the flow and any other goes on. After
 choose_tool, it goes to the documents, to GitHub or to the taxi data.
 After documents, it goes to a web search only if the documents did not
 cover the question and a web search is allowed. After run_sql, it goes

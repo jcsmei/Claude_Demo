@@ -2,7 +2,7 @@
 
 ## What problems and bugs did the project run into?
 
-The project ran into seventeen problems worth recording: a breaking
+The project ran into eighteen problems worth recording: a breaking
 change in the MCP (Model Context Protocol) library, tool errors that hid their cause, a tool
 that returned no structured data, a full disk, a chat box that ignored
 the question limit, an unsupported Python version, a rejected idea for
@@ -11,8 +11,9 @@ a live app that searched old documents, questions that silently
 stopped working, answers that felt rigid, follow-up questions that
 searched for the wrong thing, a dataset that held personal data, SQL
 that returned wrong or invented answers, testing that used up the
-daily allowance of the language model, and a web answer that made
-false claims about the project. Each one is described in its own section
+daily allowance of the language model, a web answer that made
+false claims about the project, and no defence against prompt
+injection. Each one is described in its own section
 in the STAR format.
 
 ## What is the STAR format used in the bug reports?
@@ -28,7 +29,7 @@ that order.
 Most of the problems were found by running the real system, not by
 the automated tests with fakes. Fakes prove the logic is right; only a
 live run proves the parts work together. The other lesson is that in
-RAG the search fails more often than the model: five of the seventeen
+RAG the search fails more often than the model: five of the eighteen
 problems were retrieval problems, which is why the project now has
 tests that check retrieval with real questions.
 
@@ -221,3 +222,16 @@ itself are no longer sent to web search, the model is told web pages
 know nothing about this project, and the missing answers were added to
 the documents. Result: the same question is answered correctly from
 the documents.
+
+## Problem: the bot had no defence designed against prompt injection
+
+Situation: after the project was posted publicly, the creator asked
+how it handled prompt injection. It had no defence designed for it:
+instructions and the visitor's text were sent to the model as one
+message, web pages were read as plain text, and answers could display
+images. Task: add defences without making the bot fragile. Action:
+instructions were moved to the system role, a classifier now screens
+each message, long messages are refused, and images are removed from
+answers. Result: test attacks are refused before reaching the main
+model. Lesson: assume the model can be fooled, and limit what a fooled
+model can do.

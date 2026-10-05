@@ -39,7 +39,9 @@ along the way.
 
 ```mermaid
 flowchart LR
-    message --> choose_tool
+    message --> screen
+    screen -.->|refused| answer
+    screen -.-> choose_tool
     choose_tool -.-> documents
     documents -.->|not covered| web_search
     web_search --> answer
@@ -151,6 +153,30 @@ The page stays locked until the password is entered; with no
 - **GitHub** limits calls made without a login, so commit results are
   reused for ten minutes.
 
+## Prompt injection
+
+The design assumes the model can be fooled, and limits what a
+fooled model could do. Five layers:
+
+- **Screening.** Each message is scored by Meta's Prompt Guard
+  classifier, hosted by Groq, and refused if it looks like an
+  attempt to override the instructions. Messages over 1,000
+  characters are refused too.
+- **Separate roles.** Instructions are sent in the system role; the
+  passages, web pages, conversation and question are sent as data,
+  with a rule never to follow instructions found inside them.
+- **Tools fixed in code.** The model cannot change which database,
+  repository or search tool is used, and SQL is limited to one
+  read-only `SELECT`.
+- **No secrets in prompts.** Keys and the password never reach the
+  model.
+- **No images in answers.** They are removed before display, which
+  closes a known route for leaking a conversation.
+
+No defence against prompt injection is complete. A classifier can
+miss a clever attack, so the other layers do not depend on it. Set
+`GROQ_GUARD_MODEL=` to an empty value to turn screening off.
+
 ## Privacy
 
 Personal information is protected by rules in the code, each covered
@@ -217,7 +243,7 @@ or removed text are replaced, not duplicated. Start each topic with a
 
 ## How it was built, and what went wrong
 
-Three of the documents are worth reading directly:
+Five of the documents are worth reading directly:
 
 - [data/project_notes.md](data/project_notes.md): what the project is,
   how it was built, and the reason behind each decision.
@@ -225,6 +251,10 @@ Three of the documents are worth reading directly:
   the way, each told as Situation, Task, Action, Result.
 - [data/langgraph.md](data/langgraph.md): LangGraph in plain
   language, and how RAG, MCP and LangGraph fit together.
+- [data/prompt_injection.md](data/prompt_injection.md): what
+  prompt injection is and the five layers that defend against it.
+- [data/tokens.md](data/tokens.md): token use by answer type, the
+  rate limits and the model fallback.
 
 ## License
 

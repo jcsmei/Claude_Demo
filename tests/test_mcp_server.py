@@ -37,7 +37,9 @@ def fake_backends(tmp_path, monkeypatch):
     )
     add_documents(collection, tmp_path)
     monkeypatch.setattr(mcp_server, "_collection", lambda: collection)
-    monkeypatch.setattr(rag, "ask", lambda prompt, client=None: "Mars.")
+    monkeypatch.setattr(
+        rag, "ask", lambda prompt, client=None, **kwargs: "Mars."
+    )
 
 
 def call(tool, arguments):
@@ -89,7 +91,8 @@ def test_ask_documents_returns_answer_and_sources():
 def test_ask_documents_says_when_the_documents_lack_the_answer(
         monkeypatch):
     monkeypatch.setattr(
-        rag, "ask", lambda prompt, client=None: rag.NOT_COVERED_MARKER
+        rag, "ask",
+        lambda prompt, client=None, **kwargs: rag.NOT_COVERED_MARKER
     )
     result = call("ask_documents", {"question": "Who won the World Cup?"})
     assert not result.is_error
@@ -162,7 +165,7 @@ def test_rejected_input_is_logged_as_a_warning(caplog):
 
 def test_unexpected_failure_is_logged_with_its_traceback(
         caplog, monkeypatch):
-    def broken(prompt, client=None):
+    def broken(prompt, client=None, **kwargs):
         raise RuntimeError("Groq is unreachable")
     monkeypatch.setattr(rag, "ask", broken)
     caplog.set_level(logging.INFO, logger=LOGGER)

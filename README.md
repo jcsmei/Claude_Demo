@@ -28,8 +28,10 @@ along the way.
 - **LangGraph:** the decision flow is a graph. One node chooses a tool,
   and the graph routes to that tool's nodes, including a retry loop for
   SQL that fails.
-- **MCP (Model Context Protocol):** a server exposes four tools that
-  any MCP client, such as Claude Code, can call.
+- **MCP (Model Context Protocol), in both directions:** the project
+  runs an MCP server that exposes four tools to any MCP client, such
+  as Claude Code, and it is itself an MCP client of Tavily's hosted
+  MCP server, whose ready-made search tool it calls.
 
 ```mermaid
 flowchart LR
@@ -57,7 +59,7 @@ diagram from the graph itself.
 | `llm.py` | Sends a question to a Groq model and returns the reply. |
 | `store.py` | Chunks documents, stores them in Chroma, searches them. |
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
-| `tools.py` | Fetches live information from outside: the project's commits on GitHub, and taxi driver license counts from NYC Open Data. |
+| `tools.py` | Fetches live information from outside: the project's commits on GitHub, taxi driver license counts from NYC Open Data, and web results through Tavily's MCP server. |
 | `chat.py` | A LangGraph graph that chooses the tool for each message, then answers with it. |
 | `mcp_server.py` | Exposes the search, ask, commit and data query tools to MCP clients, with logging. |
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |
@@ -129,6 +131,11 @@ The page stays locked until the password is entered; with no
   day for the default model. A chat message uses roughly 2,500 to
   4,000 tokens, so expect about 50 to 80 messages a day in total.
   Live testing draws on the same allowance as the deployed app.
+- **Token use by answer type** (estimates): a documents answer takes
+  two model calls and roughly 2,000 to 3,000 tokens; a web answer
+  takes three calls and roughly 1,000 tokens more. Calling Tavily
+  through MCP adds no tokens, because the code calls one named tool
+  and the model never sees the server's tool descriptions.
 - **Tavily's** free tier has a monthly allowance of searches; each
   web answer uses one. If it is used up, the bot falls back to its
   normal refusal.

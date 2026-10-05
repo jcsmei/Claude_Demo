@@ -1,5 +1,6 @@
 """Tests for tools, with a fake in place of the call to GitHub."""
 
+import json
 from types import SimpleNamespace
 
 import httpx
@@ -184,62 +185,80 @@ def test_query_license_data_limits_the_rows_returned():
     assert len(result["rows"]) == tools.MAX_ROWS
 
 
+def tavily_reply(count=5, is_error=False, structured=True):
+    """Build a tool result in the shape Tavily's MCP server returns."""
+    data = {"results": [
+        {"title": f"Page {number}", "url": f"https://example.com/{number}",
+         "content": "Some   text\n" + "x" * 600, "score": 0.9}
+        for number in range(1, count + 1)
+    ]}
+    text = SimpleNamespace(text=json.dumps(data))
+    return SimpleNamespace(is_error=is_error, content=[text],
+                           structured_content=data if structured else None)
+
+
 class FakeTavily:
-    """Stand in for httpx.post when it calls the web search service."""
+    """Stand in for the call to Tavily's MCP server."""
 
-    def __init__(self, status=200, error=None):
-        self.status = status
+    def __init__(self, reply=None, error=None):
+        self.reply = reply or tavily_reply()
         self.error = error
-        self.sent = None
+        self.calls = []
 
-    def __call__(self, url, **kwargs):
-        self.sent = kwargs
+    def __call__(self, query, key):
+        self.calls.append((query, key))
         if self.error:
             raise self.error
-        results = [
-            {"title": f"Page {number}", "url": f"https://example.com/{number}",
-             "content": "Some   text\n" + "x" * 600, "score": 0.9}
-            for number in range(1, 6)
-        ]
-        return SimpleNamespace(status_code=self.status,
-                               json=lambda: {"results": results})
+        return self.reply
 
 
 def test_web_search_returns_short_extracts(monkeypatch):
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
     tavily = FakeTavily()
 
-    results = tools.web_search("what is a medallion?", http_post=tavily)
+    results = tools.web_search("what is a medallion?", call_tool=tavily)
 
     assert len(results) == tools.WEB_RESULTS
     assert results[0]["title"] == "Page 1"
     assert results[0]["url"] == "https://example.com/1"
     assert results[0]["content"].startswith("Some text x")
     assert len(results[0]["content"]) == tools.SNIPPET_CHARS
-    assert tavily.sent["json"]["query"] == "what is a medallion?"
-    assert tavily.sent["headers"] == {"Authorization": "Bearer tvly-test"}
+    assert tavily.calls == [("what is a medallion?", "tvly-test")]
+
+
+def test_web_search_reads_a_result_sent_only_as_text(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    tavily = FakeTavily(reply=tavily_reply(count=2, structured=False))
+    results = tools.web_search("anything", call_tool=tavily)
+    assert [result["title"] for result in results] == ["Page 1", "Page 2"]
 
 
 def test_web_search_needs_a_key(monkeypatch):
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    tavily = FakeTavily()
     assert not tools.web_search_available()
     with pytest.raises(tools.ToolFailure, match="not configured"):
-        tools.web_search("anything", http_post=FakeTavily())
+        tools.web_search("anything", call_tool=tavily)
+    assert tavily.calls == []
 
 
-@pytest.mark.parametrize("status, message", [
-    (401, "key was rejected"),
-    (429, "allowance is used up"),
-    (500, "HTTP 500"),
+def test_web_search_explains_a_tool_error(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
+    tavily = FakeTavily(reply=tavily_reply(is_error=True))
+    with pytest.raises(tools.ToolFailure, match="reported an error"):
+        tools.web_search("anything", call_tool=tavily)
+
+
+@pytest.mark.parametrize("error", [
+    httpx.ConnectError("no route"), TimeoutError(), RuntimeError("boom"),
 ])
-def test_web_search_explains_a_bad_response(monkeypatch, status, message):
+def test_web_search_explains_a_connection_failure(monkeypatch, error):
     monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
-    with pytest.raises(tools.ToolFailure, match=message):
-        tools.web_search("anything", http_post=FakeTavily(status=status))
-
-
-def test_web_search_explains_a_network_failure(monkeypatch):
-    monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
-    tavily = FakeTavily(error=httpx.ConnectError("no route"))
+    tavily = FakeTavily(error=error)
     with pytest.raises(tools.ToolFailure, match="could not be reached"):
-        tools.web_search("anything", http_post=tavily)
+        tools.web_search("anything", call_tool=tavily)
+
+
+def test_web_search_uses_only_the_plain_search_tool():
+    assert tools.TAVILY_TOOL == "tavily_search"
+    assert tools.TAVILY_MCP_URL.startswith("https://mcp.tavily.com/")

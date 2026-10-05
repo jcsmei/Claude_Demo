@@ -43,8 +43,9 @@ was built, or about Jack's background.
 - **RAG** (retrieval-augmented generation): the assistant looks the
   answer up in a set of trusted documents before it replies, instead
   of answering from memory. That keeps answers accurate and traceable.
-- **MCP** (Model Context Protocol): a standard plug that lets other AI
-  assistants use this one's tools.
+- **MCP** (Model Context Protocol): a standard plug for tools. It
+  lets other AI assistants use this one's tools, and lets this one use
+  a web search tool built by someone else.
 - **LangGraph:** a decision flow that picks the right source for each
   question: the documents, live data from GitHub and New York City, or
   a web search.
@@ -61,8 +62,8 @@ SOURCE_LABELS = {
     "github": "Source: GitHub, the project's live commit history",
     "nyc_data": ("Source: NYC Open Data, live counts of active "
                  "medallion taxi driver licenses"),
-    "web": ("Source: a web search (Tavily), not the project's "
-            "official documents"),
+    "web": ("Source: a web search through Tavily's MCP server, not "
+            "the project's official documents"),
 }
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")
@@ -254,7 +255,8 @@ def show_web_results(results):
         st.caption(
             "These are web pages, not the project's official "
             "documents. The documents did not cover this question, so "
-            "the bot searched the web with Tavily. The model was given "
+            "the bot called the search tool on Tavily's MCP server, "
+            "acting as an MCP client. The model was given "
             "these extracts and told to answer from them only. Web "
             "pages are not checked by this project, so follow the "
             "links to judge them."

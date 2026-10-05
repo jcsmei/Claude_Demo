@@ -213,11 +213,11 @@ service's limits before testing against a shared account.
 
 Situation: the creator asked whether the project could call tools on a
 second bot. The documents did not cover it, so the bot searched the
-web and answered that the project includes an MCP client. It does not:
-the web pages described other projects, and the model presented them
-as facts about this one. Task: stop web content being passed off as
-project facts. Action: questions about the project itself are no
-longer sent to web search, the model is told web pages know nothing
-about this project, and the missing answers were added to the
-documents. Result: the same question is answered correctly from the
-documents.
+web and answered that the project included an MCP client. At that time
+it did not: the web pages described other projects, and the model
+presented them as facts about this one. Task: stop web content being
+passed off as project facts. Action: questions about the project
+itself are no longer sent to web search, the model is told web pages
+know nothing about this project, and the missing answers were added to
+the documents. Result: the same question is answered correctly from
+the documents.

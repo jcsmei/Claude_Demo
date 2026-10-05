@@ -78,12 +78,13 @@ codename.
 
 ## Does the chat page use the MCP server?
 
-No. The Streamlit chat page calls the RAG code directly, because the
-page is the project's own Python code and can import the function. MCP
-exists so that outside AI assistants can use the same abilities. The
-design is one shared core with two front ends: the MCP server for
-assistants and the chat page for people. The chat page chooses
-between the same tools by itself.
+Not the project's own one. The Streamlit chat page calls the RAG code
+directly, because the page is the project's own Python code and can
+import the function. The rag-demo server exists so that outside AI
+assistants can use the same abilities. The chat page does use MCP in
+the other direction: for web search it is an MCP client of Tavily's
+server. The design is one shared core with two front ends: the MCP
+server for assistants and the chat page for people.
 
 ## How does the MCP server handle errors?
 
@@ -114,12 +115,13 @@ license numbers.
 
 ## Can this project call tools on another MCP server or another bot?
 
-No. This project contains an MCP server only, named rag-demo. It does
-not contain an MCP client. A server offers tools; a client calls them.
-So rag-demo can be called by others, but it cannot call tools on a
-second bot's MCP server. To do that, an MCP client would have to be
-added to this project, for example to the chat page, and that has not
-been built.
+Yes, but only one so far. The project is an MCP client of exactly one
+outside server: Tavily's, which it calls for web search. It cannot yet
+call tools on any other bot's MCP server. A server offers tools; a
+client calls them. The project's own server, rag-demo, can be called
+by others but does not call out. To use a second bot's tools, that
+bot's server would have to be added to the client code in the file
+tools.py, as Tavily's was.
 
 ## Can another bot or AI assistant use this project's tools?
 
@@ -136,3 +138,41 @@ service. The client starts it with the command "python mcp_server.py"
 and exchanges messages with it over standard input and output. It does
 not listen on a network port, so it cannot be reached over the
 internet.
+
+## Is this project an MCP server, an MCP client or an MCP host?
+
+All three, in different places. It runs an MCP server, rag-demo, which
+offers the project's own four tools to other AI assistants. It is an
+MCP client of Tavily's server, whose ready-made search tool it calls
+for web search. And the chat app is the MCP host: the application that
+the client lives inside. So the project shows MCP in both directions:
+offering its own tools, and using tools built by someone else.
+
+## How does the bot use Tavily's MCP server?
+
+When the documents do not cover a general question, the bot connects
+to Tavily's hosted MCP server over the internet and calls its search
+tool, named tavily_search, with the question and a limit of three
+results. Tavily's server returns the page titles, addresses and short
+extracts. The bot sends its Tavily key in a header, not in the web
+address, so the key cannot end up in a log. Earlier the bot called
+Tavily's ordinary web API with its own code; using the MCP server
+replaced that custom code with a standard connection.
+
+## Why does the bot use only one of the tools on Tavily's MCP server?
+
+Tavily's MCP server offers five tools: search, extract, crawl, map and
+research. The bot uses only the search tool. The crawl and research
+tools can spend many search credits in one call, and the bot needs
+only a few short results to answer a question. The tool to call is
+fixed in the code; the language model is not allowed to pick from
+Tavily's tools.
+
+## Does being an MCP client use more tokens?
+
+No, not the way this project does it. The code calls one named tool
+directly, so the language model never sees the descriptions of
+Tavily's tools. A design that lets the model choose among every tool a
+server offers would add those descriptions to each prompt and cost
+more tokens on every message. The token cost of a web answer comes
+from the third model call that reads the search results, not from MCP.

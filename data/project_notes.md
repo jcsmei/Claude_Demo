@@ -47,15 +47,17 @@ project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about six subjects in its documents: how RAG works, what
+You can ask about eight subjects in its documents: how RAG works, what
 MCP is and which tools the project's MCP server offers, how LangGraph
-directs the bot's decisions, the project itself and why each decision
-was made, the problems that were found and fixed, and Jack Mei, its
-creator. You can also ask two things it answers from live sources:
-what changed in the code recently, from GitHub, and how many New York
-City medallion taxi drivers hold an active license and when those
-licenses expire, from NYC Open Data. A general question outside all of
-these is answered from a web search, and the bot says so.
+directs the bot's decisions, how the bot defends against prompt
+injection, what it costs in tokens and what its limits are, the
+project itself and why each decision was made, the problems that were
+found and fixed, and Jack Mei, its creator. You can also ask two
+things it answers from live sources: what changed in the code
+recently, from GitHub, and how many New York City medallion taxi
+drivers hold an active license and when those licenses expire, from
+NYC Open Data. A general question outside all of these is answered
+from a web search, and the bot says so.
 
 ## What are the parts of this project?
 
@@ -180,17 +182,6 @@ for the language model, the MCP Python SDK 2.3.0 for the server, LangGraph 1.2.1
 decision flow,
 Streamlit 1.65.0 for the chat page, and pytest for the tests.
 
-## Is there a rate limit on questions?
-
-Yes, three limits apply. Each visit is limited to 20 questions. The
-project's Groq account, on the free tier, allows each model 8,000
-tokens per minute and 200,000 tokens per day. A chat message uses
-roughly 2,500 to 4,000 tokens across two or three model calls, so the
-main model can answer about 50 to 80 messages per day across all
-visitors. When the main model reaches a limit, the bot switches to a
-second model. Only if both are limited does the page say which limit
-was reached and when to try again.
-
 ## How does the bot choose which tool to use?
 
 For every message, the language model first chooses one of three
@@ -253,17 +244,6 @@ code changes; NYC Open Data, queried live with SQL; and the web,
 searched through a service named Tavily when the documents do not
 cover a question.
 
-## What happens when the tokens run out and the model's allowance is used up?
-
-Groq counts its limits separately for each model. When the main model,
-openai/gpt-oss-20b, is rate limited, the bot sends the same question
-to a second model on the same account, openai/gpt-oss-120b, so
-visitors still get an answer. The main model is then skipped for ten
-minutes, so that later questions do not each wait on a request that
-would be refused. Every switch is written to the log. If both models
-are rate limited, the page says so. This was chosen over a mode that
-only shows search results, because the bot should stay able to answer.
-
 ## When does the bot search the web?
 
 Only when its own documents do not cover a general question. The bot
@@ -315,15 +295,3 @@ nothing, it is corrected once. If the web search is unavailable, the
 visitor gets the normal refusal with a note instead of an error. If a
 tool fails outright, the page explains which stage failed and stays
 usable for the next question.
-
-## How many tokens does each kind of answer use?
-
-These are estimates, not exact measurements. An answer from the
-documents takes two model calls and roughly 2,000 to 3,000 tokens,
-most of it the five retrieved passages. An answer from GitHub takes
-two calls and somewhat fewer tokens. An answer from the taxi data
-takes three calls: choose the tool, write the query, explain the
-result. A web answer is the most expensive: three calls and roughly
-1,000 tokens more than a documents answer, plus one Tavily search
-credit. Token use is the main running cost, so it is tracked and kept
-low on purpose.

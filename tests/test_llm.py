@@ -121,3 +121,20 @@ def test_ask_logs_the_switch_to_the_fallback(caplog):
         ask("What is RAG?", client=client, model="main-model")
     assert "main-model is rate limited" in caplog.text
     assert "using backup-model instead" in caplog.text
+
+
+def test_ask_sends_instructions_in_the_system_role():
+    client = FakeClient("ok")
+    ask("Question: hello", client=client, system="Answer briefly.")
+    system, user = client.received["messages"]
+    assert system == {"role": "system",
+                      "content": f"Answer briefly. {llm.DATA_RULE}"}
+    assert user == {"role": "user", "content": "Question: hello"}
+
+
+def test_ask_can_be_told_not_to_fall_back():
+    client = LimitedClient(limited=["main-model"])
+    with pytest.raises(groq.RateLimitError):
+        ask("What is RAG?", client=client, model="main-model",
+            fallback=False)
+    assert client.models_called == ["main-model"]

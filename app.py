@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 
 import groq
 import streamlit as st
@@ -176,6 +177,21 @@ def describe_error(error):
     return headline, detail
 
 
+# A Markdown image: ![description](address) or ![description][name].
+IMAGE_PATTERN = re.compile(r"!\[([^\]]*)\](?:\([^)]*\)|\[[^\]]*\])")
+
+
+def strip_images(text):
+    """Return `text` with Markdown images replaced by their description.
+
+    A browser fetches an image as soon as it is shown.  If outside
+    text ever tricked the model into writing an image link, that fetch
+    could carry parts of the conversation to someone else's server, so
+    answers are never allowed to show images.
+    """
+    return IMAGE_PATTERN.sub(r"\1", text)
+
+
 def answer_question(question, history):
     """Return the chat message that answers `question`.
 
@@ -193,7 +209,7 @@ def answer_question(question, history):
         headline, detail = describe_error(error)
         return {"role": "assistant", "content": headline,
                 "detail": detail, "error": True}
-    content = result["answer"]
+    content = strip_images(result["answer"])
     if result["status"] == "not_covered":
         content += (" Try a question about the documents listed in "
                     "the sidebar.")
@@ -280,7 +296,8 @@ def show_message(message):
         st.markdown(message["content"])
         # Only the bot's answers have a source; a visitor's own
         # message and the reply to an unclear one do not.
-        if message.get("tool") and message["status"] != "unclear":
+        if (message.get("tool")
+                and message["status"] not in ("unclear", "blocked")):
             st.caption(SOURCE_LABELS[message["tool"]])
         if message.get("commits"):
             show_commits(message["commits"])

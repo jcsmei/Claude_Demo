@@ -41,30 +41,45 @@ def format_history(history):
     return "\n".join(lines)
 
 
+# The instructions for answering from retrieved passages.  They are
+# sent in the system role; the passages and the question are sent
+# separately as data (see `build_prompt`).
+ANSWER_INSTRUCTIONS = (
+    "You answer questions about a demo project. Use only the facts in "
+    "the context. Explain them conversationally in plain language, as "
+    "if talking to a curious reader, and do not mention the context "
+    "itself. Do not add facts, and do not spell out abbreviations "
+    "unless the context does. Use the conversation so far to work out "
+    "what the question refers to. If the user did not understand an "
+    "earlier answer, explain the same facts again more simply. If the "
+    "question is only a greeting or thanks, or is too unclear to "
+    "answer even with the conversation, reply with only the word "
+    f"{UNCLEAR_MARKER}. If the context does not contain the facts "
+    f"needed to answer, reply with only the word {NOT_COVERED_MARKER}."
+)
+REWRITE_INSTRUCTIONS = (
+    "Rewrite the latest message as one question that can be understood "
+    "without the conversation. Replace words such as 'it', 'he' or "
+    "'that' with what they refer to. If the user did not understand, "
+    "ask for a simpler explanation of the topic being discussed. If "
+    "the latest message is already complete, or is only a greeting or "
+    "thanks, return it unchanged. Reply with the rewritten message "
+    "only."
+)
+
+
 def build_prompt(question, chunks, history=None):
-    """Return a prompt that asks the model to answer from `chunks` only.
+    """Return the data the model answers from: passages and question.
 
     `history` is the earlier conversation, a list of messages with a
     `role` ("user" or "assistant") and `content`.  It lets the model
-    work out what a follow-up message refers to.
+    work out what a follow-up message refers to.  The instructions are
+    not part of this text; they are `ANSWER_INSTRUCTIONS`.
     """
     context = "\n\n".join(
         f"[{chunk['source']}]\n{chunk['text']}" for chunk in chunks
     )
     return (
-        "You answer questions about a demo project. Use only the "
-        "facts in the context below. Explain them conversationally in "
-        "plain language, as if talking to a curious reader, and do "
-        "not mention the context itself. Do not add facts, and do not "
-        "spell out abbreviations unless the context does. Use the "
-        "conversation so far to work out what the question refers to. "
-        "If the user did not understand an earlier answer, explain "
-        "the same facts again more simply. If the question is only a "
-        "greeting or thanks, "
-        "or is too unclear to answer even with the conversation, "
-        f"reply with only the word {UNCLEAR_MARKER}. If the context "
-        "does not contain the facts needed to answer, reply with only "
-        f"the word {NOT_COVERED_MARKER}.\n\n"
         f"Context:\n{context or '(no documents found)'}\n\n"
         f"Conversation so far:\n{format_history(history) or '(none)'}\n\n"
         f"Question: {question}"
@@ -83,17 +98,11 @@ def standalone_question(question, history=None, client=None):
     if not history:
         return question
     prompt = (
-        "Rewrite the latest message as one question that can be "
-        "understood without the conversation. Replace words such as "
-        "'it', 'he' or 'that' with what they refer to. If the user "
-        "did not understand, ask for a simpler explanation of the "
-        "topic being discussed. If the latest message is already "
-        "complete, or is only a greeting or thanks, return it "
-        "unchanged. Reply with the rewritten message only.\n\n"
         f"Conversation:\n{format_history(history)}\n\n"
         f"Latest message: {question}"
     )
-    rewritten = " ".join(ask(prompt, client=client).split())
+    reply = ask(prompt, client=client, system=REWRITE_INSTRUCTIONS)
+    rewritten = " ".join(reply.split())
     if not rewritten or len(rewritten) > MAX_QUERY_CHARS:
         return question
     return rewritten
@@ -127,7 +136,7 @@ def answer(question, collection, client=None, k=5, history=None,
                                            client=client)
     chunks = search(collection, search_query, k=k)
     prompt = build_prompt(question, chunks, history=history)
-    reply = ask(prompt, client=client)
+    reply = ask(prompt, client=client, system=ANSWER_INSTRUCTIONS)
     sources = []
     if UNCLEAR_MARKER in reply:
         status, reply = "unclear", UNCLEAR_MESSAGE

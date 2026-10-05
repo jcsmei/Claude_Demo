@@ -1,5 +1,9 @@
 # Claude_Demo: a RAG, MCP and LangGraph learning demo
 
+**Author:** [Jack Mei](https://www.linkedin.com/in/jcsmei209/), who
+designed and directed the project, building it with Claude Code, an AI
+coding assistant.
+
 A chat bot that answers from four kinds of source and always shows
 where each answer came from:
 
@@ -221,3 +225,9 @@ Three of the documents are worth reading directly:
   the way, each told as Situation, Task, Action, Result.
 - [data/langgraph.md](data/langgraph.md): LangGraph in plain
   language, and how RAG, MCP and LangGraph fit together.
+
+## License
+
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Jack Mei.
+You may use and adapt the code, provided the copyright notice stays
+with it.

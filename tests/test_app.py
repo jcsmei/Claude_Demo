@@ -221,8 +221,8 @@ def test_web_answer_shows_its_source_and_results(app, monkeypatch):
     assert reply.warning[0].value == chat.WEB_NOTICE
     assert reply.markdown[0].value == "A medallion is a permit."
     captions = " ".join(caption.value for caption in reply.caption)
-    assert ("Source: a web search (Tavily), not the project's official "
-            "documents") in captions
+    assert ("Source: a web search through Tavily's MCP server, not the "
+            "project's official documents") in captions
     assert "not the project's official documents" in captions
     assert reply.expander[0].label == "Web results (1)"
     assert reply.markdown[1].value == (

@@ -268,13 +268,13 @@ only shows search results, because the bot should stay able to answer.
 
 Only when its own documents do not cover a general question. The bot
 always tries the documents first, and they are never overridden by the
-web. A question about this project itself is never searched on the
-web, because the web knows nothing about this project; if the
-documents do not cover it, the bot says so. A web answer is marked
-three ways: a highlighted warning that it comes from web pages and not
-from the project's official documents, a source line naming the web
-search, and a list of the pages used, with links. Web pages are not
-verified by this project.
+web. The search runs through Tavily's MCP server, which the bot calls
+as an MCP client. A question about this project itself is never
+searched on the web, because the web knows nothing about this project;
+if the documents do not cover it, the bot says so. A web answer is
+marked three ways: a highlighted warning that it comes from web pages
+and not from the project's official documents, a source line naming
+the web search, and a list of the pages used, with links.
 
 ## Why are questions about the creator never searched on the web?
 
@@ -315,3 +315,15 @@ nothing, it is corrected once. If the web search is unavailable, the
 visitor gets the normal refusal with a note instead of an error. If a
 tool fails outright, the page explains which stage failed and stays
 usable for the next question.
+
+## How many tokens does each kind of answer use?
+
+These are estimates, not exact measurements. An answer from the
+documents takes two model calls and roughly 2,000 to 3,000 tokens,
+most of it the five retrieved passages. An answer from GitHub takes
+two calls and somewhat fewer tokens. An answer from the taxi data
+takes three calls: choose the tool, write the query, explain the
+result. A web answer is the most expensive: three calls and roughly
+1,000 tokens more than a documents answer, plus one Tavily search
+credit. Token use is the main running cost, so it is tracked and kept
+low on purpose.

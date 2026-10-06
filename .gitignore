@@ -16,3 +16,6 @@ logs/
 
 # Python's auto-generated compiled files
 __pycache__/
+
+# Private working journal and transcript archive - local only
+journal/

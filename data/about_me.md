@@ -15,16 +15,6 @@ The way to contact Jack Mei is through his LinkedIn profile at
 https://www.linkedin.com/in/jcsmei209/ He does not share a phone
 number or an email address here; please message him on LinkedIn.
 
-## Where is Jack located, and what work arrangements is he open to?
-
-Jack Mei is based in New York, NY. He is open to remote roles in the
-Central or Eastern time zones only, to hybrid roles, and to fully
-in-office roles for the right position.
-
-## Is Jack authorized to work in the United States?
-
-Yes. Jack Mei is a US citizen and does not need visa sponsorship.
-
 ## What are Jack's main strengths?
 
 Jack combines deep technical ownership with customer relationship

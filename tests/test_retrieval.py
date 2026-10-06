@@ -186,8 +186,6 @@ CASES = [
     ("What did he do at Sigma?", "4,000 tickets"),
     ("What experience does Jack have with AI agents?", "LangGraph"),
     ("Does Jack know Snowflake?", "Snowflake, Databricks and Google"),
-    ("Does Jack need visa sponsorship?", "US citizen"),
-    ("Is Jack open to remote work?", "Central or Eastern time zones"),
     ("Where did Jack go to school?", "CUNY School of Professional"),
 ]
 

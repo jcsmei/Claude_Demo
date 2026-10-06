@@ -85,6 +85,7 @@ diagram from the graph itself.
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |
 | `data/` | The knowledge base: the documents the assistant answers from, written as questions and answers. |
 | `tests/` | Automated tests. |
+| `evals/` | A model evaluation: the same fixed cases run on each candidate model, with saved results. |
 | `.mcp.json` | Tells Claude Code how to start the MCP server. |
 
 ## Setup (Windows, PowerShell)
@@ -267,7 +268,7 @@ or removed text are replaced, not duplicated. Start each topic with a
 For the full technical specification, from the decision flow down to
 the parameters in the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Five of the documents are worth reading directly:
+Six of the documents are worth reading directly:
 
 - [data/project_notes.md](data/project_notes.md): what the project is,
   how it was built, and the reason behind each decision.
@@ -279,6 +280,9 @@ Five of the documents are worth reading directly:
   prompt injection is and the five layers that defend against it.
 - [data/tokens.md](data/tokens.md): token use by answer type, the
   rate limits and the model fallback.
+- [data/model_evaluation.md](data/model_evaluation.md): how the two
+  candidate models were compared, and why the smaller one is the
+  default.
 
 ## License
 

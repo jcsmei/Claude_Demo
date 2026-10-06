@@ -127,13 +127,15 @@ breaks, the fault is in the one piece just added.
 
 ## How is the project tested?
 
-The project has more than 180 automated tests, run with pytest. The
-tests replace the language model, the embedding model, GitHub and NYC
-Open Data with simple fakes, so they need no internet, cost nothing
-and give the same result every time. A separate set of tests checks
-retrieval with real questions and the real embedding model. Live runs
-against the real services were done as well, and they caught bugs the
-fakes could not.
+The project has more than 270 automated tests, run with pytest. The
+tests replace the language model, the embedding model, GitHub, NYC
+Open Data and the web search with simple fakes, so they need no API
+keys, cost nothing and give the same result every time. A separate set
+of tests checks retrieval with real questions and the real embedding
+model. GitHub runs the whole suite automatically on every push, a
+practice called continuous integration, and the README shows a badge
+with the latest result. Live runs against the real services were done
+as well, and they caught bugs the fakes could not.
 
 ## How are the API key and password kept safe?
 

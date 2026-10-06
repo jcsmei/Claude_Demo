@@ -1,5 +1,7 @@
 # Claude_Demo: a RAG, MCP and LangGraph learning demo
 
+[![tests](https://github.com/jcsmei/Claude_Demo/actions/workflows/tests.yml/badge.svg)](https://github.com/jcsmei/Claude_Demo/actions/workflows/tests.yml)
+
 **Author:** [Jack Mei](https://www.linkedin.com/in/jcsmei209/), who
 designed and directed the project, building it with Claude Code, an AI
 coding assistant.
@@ -93,20 +95,24 @@ Requires Python 3.12 and a free API key from
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+Copy-Item .env.example .env
 ```
 
-Then create a file named `.env` in the project folder:
+Then open `.env` and fill in the two required values:
 
 ```
-GROQ_API_KEY=your_key_here
+GROQ_API_KEY=your_groq_api_key
 APP_PASSWORD=choose_a_password
 ```
 
-`.env` is listed in `.gitignore`, so neither value is committed. Two
-optional settings can be added to it: `GROQ_MODEL=<model id>` to use a
-different Groq model, and `MAX_QUESTIONS=<number>` to change the limit
-of 20 questions per visit.
+`.env` is listed in `.gitignore`, so neither value is committed.
+[.env.example](.env.example) lists the optional settings too, such as
+`GROQ_MODEL=<model id>` to use a different Groq model and
+`MAX_QUESTIONS=<number>` to change the limit of 20 questions per visit.
+
+`requirements.txt` holds what the app needs to run;
+`requirements-dev.txt` adds the test tools.
 
 GitHub and NYC Open Data are called without a key. Web search is
 optional: add `TAVILY_API_KEY=your_key` (free from
@@ -218,13 +224,13 @@ last rule is a safeguard, not a guarantee.
 ## Test
 
 ```powershell
-python -m pytest -q
+pytest -q
 ```
 
-Use this exact form: `python -m pytest` lets the tests find the
-project's modules, where plain `pytest` does not.
+GitHub also runs the whole suite on every push; the badge at the top
+of this page shows the latest result.
 
-There are over 180 tests. They replace Groq, GitHub, NYC Open Data and
+There are over 270 tests. They replace Groq, GitHub, NYC Open Data and
 the embedding model with fakes, so they need no API key, cost nothing
 and give the same result every time.
 

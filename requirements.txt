@@ -1,4 +1,5 @@
-# Install with: python -m pip install -r requirements.txt
+# What the app needs to run. The hosting service installs this file.
+# For development and tests, install requirements-dev.txt instead.
 chromadb==1.5.9
 groq==1.7.0
 httpx==0.28.1
@@ -6,6 +7,3 @@ langgraph==1.2.12
 mcp==2.3.0
 python-dotenv==1.2.4
 streamlit==1.65.0
-
-# Testing
-pytest==9.1.1

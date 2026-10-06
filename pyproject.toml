@@ -1,0 +1,7 @@
+# Tool settings for the project.
+
+[tool.pytest.ini_options]
+# Lets the tests import the project's modules, so that plain `pytest`
+# works from the project folder.
+pythonpath = ["."]
+testpaths = ["tests"]

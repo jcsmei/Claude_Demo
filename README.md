@@ -4,6 +4,18 @@
 designed and directed the project, building it with Claude Code, an AI
 coding assistant.
 
+## Try the live demo
+
+**[jcsmei209-claudedemo.streamlit.app](https://jcsmei209-claudedemo.streamlit.app/)**
+· password: `demo209`
+
+- If the app has been idle, click the button to wake it; that takes
+  about a minute, and the first question after it is slow.
+- Start with one of the example questions on the page, such as "Who
+  built this demo, and what is his background?"
+- It runs on free allowances, so it may ask you to try again later on
+  a busy day.
+
 A chat bot that answers from four kinds of source and always shows
 where each answer came from:
 
@@ -116,7 +128,10 @@ time; it is rebuilt from `data/`.
 ## The chat page
 
 The page stays locked until the password is entered; with no
-`APP_PASSWORD` set, nobody can get in.
+`APP_PASSWORD` set, nobody can get in. The live demo's password is
+published at the top of this README on purpose: it keeps automated
+visitors out, while the question, token and screening limits protect
+the allowance.
 
 - **Every answer names its source** and shows its evidence: the
   retrieved passages with distances, the commits fetched from GitHub,

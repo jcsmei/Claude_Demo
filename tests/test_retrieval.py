@@ -122,7 +122,7 @@ CASES = [
      "Each answers a different question"),
     ("How would you add a new tool?", "three small changes"),
     ("Is this project an MCP server or an MCP client?",
-     "All three, in different places"),
+     "both an MCP server and an MCP client"),
     ("How does the bot use Tavily's MCP server?", "tavily_search"),
     ("Why only one of Tavily's tools?", "offers five tools"),
     ("Does MCP use more tokens?", "never sees the descriptions"),

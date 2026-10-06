@@ -141,12 +141,12 @@ internet.
 
 ## Is this project an MCP server, an MCP client or an MCP host?
 
-All three, in different places. It runs an MCP server, rag-demo, which
-offers the project's own four tools to other AI assistants. It is an
-MCP client of Tavily's server, whose ready-made search tool it calls
-for web search. And the chat app is the MCP host: the application that
-the client lives inside. So the project shows MCP in both directions:
-offering its own tools, and using tools built by someone else.
+This project is both an MCP server and an MCP client. As an MCP
+server, named rag-demo, it offers its own four tools to other AI
+assistants. As an MCP client, it calls the search tool on Tavily's MCP
+server. These are two separate one-way connections, not a two-way
+exchange. The chat app is the MCP host: the application the client
+runs inside.
 
 ## How does the bot use Tavily's MCP server?
 

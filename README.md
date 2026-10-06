@@ -46,10 +46,13 @@ along the way.
 - **LangGraph:** the decision flow is a graph. One node chooses a tool,
   and the graph routes to that tool's nodes, including a retry loop for
   SQL that fails.
-- **MCP (Model Context Protocol), in both directions:** the project
-  runs an MCP server that exposes four tools to any MCP client, such
-  as Claude Code, and it is itself an MCP client of Tavily's hosted
-  MCP server, whose ready-made search tool it calls.
+- **MCP (Model Context Protocol), as both server and client:** the
+  project runs an MCP server that exposes four tools to any MCP
+  client, such as Claude Code. Separately, it is an MCP client of
+  Tavily's hosted MCP server, whose ready-made search tool it calls.
+  These are two one-way connections with different parties, not a
+  two-way exchange, and MCP's two-way features such as sampling are
+  not used.
 
 ```mermaid
 flowchart LR

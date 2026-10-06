@@ -83,7 +83,7 @@ diagram from the graph itself.
 | `chat.py` | A LangGraph graph that chooses the tool for each message, then answers with it. |
 | `mcp_server.py` | Exposes the search, ask, commit and data query tools to MCP clients, with logging. |
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |
-| `data/` | The documents the bot searches, written as questions and answers. |
+| `data/` | The knowledge base: the documents the assistant answers from, written as questions and answers. |
 | `tests/` | Automated tests. |
 | `.mcp.json` | Tells Claude Code how to start the MCP server. |
 
@@ -263,6 +263,9 @@ or removed text are replaced, not duplicated. Start each topic with a
 `##` heading: a new chunk begins at every heading.
 
 ## How it was built, and what went wrong
+
+For the full technical specification, from the decision flow down to
+the parameters in the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Five of the documents are worth reading directly:
 

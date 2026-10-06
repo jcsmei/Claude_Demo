@@ -375,7 +375,7 @@ def show_sidebar(remaining):
             "failed SQL query is retried."
         )
         st.graphviz_chart(flow_diagram())
-        st.header("Documents")
+        st.header("Knowledge base")
         for path in sorted(DATA_FOLDER.iterdir()):
             if path.suffix.lower() in DOCUMENT_SUFFIXES:
                 st.markdown(f"- {path.name}")

@@ -47,17 +47,17 @@ project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about eight subjects in its documents: how RAG works, what
-MCP is and which tools the project's MCP server offers, how LangGraph
-directs the bot's decisions, how the bot defends against prompt
-injection, what it costs in tokens and what its limits are, the
-project itself and why each decision was made, the problems that were
-found and fixed, and Jack Mei, its creator. You can also ask two
-things it answers from live sources: what changed in the code
-recently, from GitHub, and how many New York City medallion taxi
-drivers hold an active license and when those licenses expire, from
-NYC Open Data. A general question outside all of these is answered
-from a web search, and the bot says so.
+You can ask about nine subjects in its knowledge base: a technical
+overview of the whole system, how RAG works, what MCP is and which
+tools the project's MCP server offers, how LangGraph directs the bot's
+decisions, how the bot defends against prompt injection, what it costs
+in tokens and what its limits are, the project itself and why each
+decision was made, the problems that were found and fixed, and Jack
+Mei, its creator. You can also ask two things it answers from live
+sources: what changed in the code recently, from GitHub, and how many
+New York City medallion taxi drivers hold an active license and when
+those licenses expire, from NYC Open Data. A general question outside
+all of these is answered from a web search, and the bot says so.
 
 ## What are the parts of this project?
 

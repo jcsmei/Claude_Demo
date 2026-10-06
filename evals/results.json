@@ -1,0 +1,205 @@
+{
+  "run_date": "2026-10-06",
+  "notes": [
+    "Two rows for the case 'fact: codename' were re-scored by hand from fail to pass. Both answers were correct; the first version of the check did not allow for a non-breaking space.",
+    "Timings include waits on the per-minute rate limit, most visibly in the SQL cases, and are not a fair speed comparison."
+  ],
+  "summary": {
+    "openai/gpt-oss-20b": {
+      "passed": 11,
+      "cases": 11,
+      "average_seconds": 2.7,
+      "model_calls": 24,
+      "tokens": 14235
+    },
+    "openai/gpt-oss-120b": {
+      "passed": 10,
+      "cases": 11,
+      "average_seconds": 1.9,
+      "model_calls": 24,
+      "tokens": 13645
+    }
+  },
+  "results": {
+    "openai/gpt-oss-20b": [
+      {
+        "case": "list tools",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 2.5,
+        "answer": "The MCP server offers four tools: **search_documents**, **ask_documents**, **recent_commits**, and **query_license_data**."
+      },
+      {
+        "case": "fact: years",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.1,
+        "answer": "Jack has nine years of professional experience."
+      },
+      {
+        "case": "fact: codename",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.0,
+        "answer": "The project\u2019s codename is **Blue Heron**."
+      },
+      {
+        "case": "concept",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.1,
+        "answer": "The knowledge base is the original set of documents you write and keep\u2014think of it as the source of truth. The index is a searchable copy that\u2019s built from those document"
+      },
+      {
+        "case": "abbreviation",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 2.2,
+        "answer": "MCP stands for **Model Context Protocol**."
+      },
+      {
+        "case": "refuse: off topic",
+        "tool": "documents",
+        "status": "not_covered",
+        "pass": true,
+        "seconds": 1.6,
+        "answer": "The documents do not contain an answer to this question."
+      },
+      {
+        "case": "greeting",
+        "tool": "documents",
+        "status": "unclear",
+        "pass": true,
+        "seconds": 1.3,
+        "answer": "I can answer questions about how RAG works, the MCP server and its tools, how this project was built, the problems found along the way, and Jack Mei's background. What wo"
+      },
+      {
+        "case": "follow-up",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.2,
+        "answer": "The MCP server in this project offers four tools: 1. **search_documents** \u2013 looks up information in the project\u2019s documents. 2. **ask_documents** \u2013 lets you ask questions"
+      },
+      {
+        "case": "route: github",
+        "tool": "github",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.2,
+        "answer": "The newest change added a technical specification and a short overview for the bot. This update is the most recent code modification."
+      },
+      {
+        "case": "route: sql",
+        "tool": "nyc_data",
+        "status": "answered",
+        "pass": true,
+        "seconds": 9.4,
+        "answer": "There are **180,521** active medallion taxi drivers in New York."
+      },
+      {
+        "case": "sql filter",
+        "tool": "nyc_data",
+        "status": "answered",
+        "pass": true,
+        "seconds": 6.6,
+        "answer": "There are **40,860** medallion taxi driver licenses that expire in 2027."
+      }
+    ],
+    "openai/gpt-oss-120b": [
+      {
+        "case": "list tools",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.5,
+        "answer": "The MCP server provides four tools: `search_documents`, `ask_documents`, `recent_commits`, and `query_license_data`."
+      },
+      {
+        "case": "fact: years",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 2.8,
+        "answer": "Jack has about 9 years of professional experience."
+      },
+      {
+        "case": "fact: codename",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.5,
+        "answer": "The project's codename is **Blue Heron**."
+      },
+      {
+        "case": "concept",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.6,
+        "answer": "The knowledge base is just the original set of source documents\u2014the markdown files you write and maintain. It\u2019s the single source of truth for what the assistant knows. T"
+      },
+      {
+        "case": "abbreviation",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.3,
+        "answer": "MCP stands for **Model Context Protocol**."
+      },
+      {
+        "case": "refuse: off topic",
+        "tool": "documents",
+        "status": "not_covered",
+        "pass": true,
+        "seconds": 2.0,
+        "answer": "The documents do not contain an answer to this question."
+      },
+      {
+        "case": "greeting",
+        "tool": "documents",
+        "status": "answered",
+        "pass": false,
+        "seconds": 1.6,
+        "answer": "I can help you with: - Answering questions using the project\u2019s document set (RAG) - Pulling live information from GitHub repositories - Accessing NYC Open Data for up\u2011to\u2011"
+      },
+      {
+        "case": "follow-up",
+        "tool": "documents",
+        "status": "answered",
+        "pass": true,
+        "seconds": 1.7,
+        "answer": "The MCP server (named rag\u2011demo) provides four built\u2011in tools: 1. **search_documents** \u2013 lets you look up information across the project\u2019s documents. 2. **ask_documents** "
+      },
+      {
+        "case": "route: github",
+        "tool": "github",
+        "status": "answered",
+        "pass": true,
+        "seconds": 0.9,
+        "answer": "The most recent change (made on 2026\u201110\u201106 at 12:47 UTC) added a technical specification and a short overview for the bot."
+      },
+      {
+        "case": "route: sql",
+        "tool": "nyc_data",
+        "status": "answered",
+        "pass": true,
+        "seconds": 3.6,
+        "answer": "There are **180,521** active medallion taxi drivers in New York."
+      },
+      {
+        "case": "sql filter",
+        "tool": "nyc_data",
+        "status": "answered",
+        "pass": true,
+        "seconds": 2.8,
+        "answer": "There are **40,860** medallion taxi driver licenses that are set to expire in 2027."
+      }
+    ]
+  }
+}

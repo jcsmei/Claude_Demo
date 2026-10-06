@@ -2,12 +2,12 @@
 
 ## What is this project?
 
-This project is a small learning demo of three ideas: RAG (retrieval-
-augmented generation), MCP (Model Context Protocol) and LangGraph. It
-answers questions from a small folder of documents and from two live
-sources, GitHub and NYC Open Data, shows the evidence each answer came
-from, and offers the same abilities to AI assistants as tools. It was
-started in October 2026.
+This project is a small learning demo of three ideas: RAG
+(retrieval-augmented generation), MCP (Model Context Protocol) and
+LangGraph. It answers questions from a small folder of documents and
+from two live sources, GitHub and NYC Open Data, shows the evidence
+each answer came from, and offers the same abilities to AI assistants
+as tools. It was started in October 2026.
 
 ## Who created this demo?
 
@@ -47,17 +47,18 @@ project is not in the documents, the bot will say it does not know.
 
 ## What can I ask this bot?
 
-You can ask about nine subjects in its knowledge base: a technical
+You can ask about ten subjects in its knowledge base: a technical
 overview of the whole system, how RAG works, what MCP is and which
 tools the project's MCP server offers, how LangGraph directs the bot's
-decisions, how the bot defends against prompt injection, what it costs
-in tokens and what its limits are, the project itself and why each
-decision was made, the problems that were found and fixed, and Jack
-Mei, its creator. You can also ask two things it answers from live
-sources: what changed in the code recently, from GitHub, and how many
-New York City medallion taxi drivers hold an active license and when
-those licenses expire, from NYC Open Data. A general question outside
-all of these is answered from a web search, and the bot says so.
+decisions, how the bot defends against prompt injection, how its
+language models were evaluated, what it costs in tokens and what its
+limits are, the project itself and why each decision was made, the
+problems that were found and fixed, and Jack Mei, its creator. You can
+also ask two things it answers from live sources: what changed in the
+code recently, from GitHub, and how many New York City medallion taxi
+drivers hold an active license and when those licenses expire, from
+NYC Open Data. A general question outside all of these is answered
+from a web search, and the bot says so.
 
 ## What are the parts of this project?
 
@@ -69,15 +70,42 @@ information from outside, such as GitHub. chat.py chooses which tool
 fits each message. mcp_server.py offers the tools to AI assistants.
 app.py is the chat page.
 
-## Which language model (LLM) does this bot use?
+## Tell me about the model being used
 
-The answers are written by the model openai/gpt-oss-20b, an
-open-weight language model published by OpenAI with about 20 billion
-parameters. The model is run by Groq, a company that hosts language
-models and serves them through an API. The app sends the prompt to
-Groq over the internet and receives the answer back. A second model,
-openai/gpt-oss-120b, is used as a backup when the first is rate
-limited.
+The model being used to write the answers is openai/gpt-oss-20b, an
+open-weight language model from OpenAI, hosted by Groq. The bot uses
+three models in all: this main one, a larger backup, and a small
+classifier that screens messages.
+
+## Which language models does this bot use, and what does each one do?
+
+The bot uses three models, all hosted by Groq, a company that runs
+models and serves them through an API. The main model,
+openai/gpt-oss-20b, writes the answers. A larger model,
+openai/gpt-oss-120b, is the backup when the main one is rate limited.
+A small classifier, Llama Prompt Guard 2 from Meta, screens each
+message for prompt injection before the main model sees it.
+
+## What is the difference between the 20b and 120b models?
+
+Both are open-weight language models published by OpenAI. The number
+is the count of parameters, which is roughly the model's capacity:
+about 20 billion against about 120 billion. More parameters generally
+means stronger reasoning, at a higher cost per token. On Groq's free
+tier both have the same allowance. In this project's own evaluation
+the two tied on accuracy, and the smaller one followed instructions
+more reliably, so it is the main model and the larger one is held in
+reserve.
+
+## Which model prevents prompt injection? What is Prompt Guard?
+
+Llama Prompt Guard 2 is a classifier, not a chat model. It does not
+write text. It reads one message and returns a single number from 0 to
+1: how likely the message is an attempt to override the assistant's
+instructions. It has about 86 million parameters, a tiny fraction of
+the main model's 20 billion, so it adds almost no delay or cost. Meta
+built it for this one job. It runs first, and a message scoring 0.5 or
+above is refused.
 
 ## Why was this language model chosen?
 

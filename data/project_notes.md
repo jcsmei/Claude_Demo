@@ -145,11 +145,13 @@ error message ever contained a secret, the app replaces it with
 
 ## Why is the chat page behind a password, with a question limit?
 
-Each answer uses the project owner's Groq account. The password stops
-strangers from using it, and if no password is configured the page
-stays locked for everyone. Each visit is also limited to 20 questions.
-The password is the real protection; the limit only guards against
-accidents.
+Each answer uses the project owner's Groq account. The demo password
+is published in the project's README on GitHub, so that anyone
+reviewing the project can try it. It is therefore a gate against
+automated visitors, not a secret. What protects the allowance is the
+limits: 20 questions per visit, a daily token allowance, and screening
+of every message. The password can be changed at any time, and if none
+is configured the page stays locked for everyone.
 
 ## How does the bot handle failures?
 

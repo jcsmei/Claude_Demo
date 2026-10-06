@@ -138,6 +138,8 @@ CASES = [
      "fetches an image the moment it is shown"),
     ("Are the injection defences complete?",
      "No defence against prompt injection is complete"),
+    ("Are the tests run automatically?",
+     "continuous integration"),
     # The creator
     ("Who built this demo, and what is his background?",
      "technical solutions architect based in New York"),

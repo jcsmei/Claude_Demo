@@ -13,8 +13,8 @@ import chromadb
 import pytest
 
 from evals.retrieval_cases import CASES, TOP_K
-from rag import DATA_FOLDER
-from store import add_documents, get_collection, search
+from assistant.rag import DATA_FOLDER
+from assistant.store import add_documents, get_collection, search
 
 
 @pytest.fixture(scope="module")

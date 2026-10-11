@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-import tools
+from assistant import tools
 
 
 def github_item(number):

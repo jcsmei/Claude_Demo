@@ -25,11 +25,11 @@ from groq import Groq
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import chat  # noqa: E402
-import llm  # noqa: E402
-import tools  # noqa: E402
-from rag import DATA_FOLDER  # noqa: E402
-from store import add_documents, get_collection  # noqa: E402
+from assistant import chat  # noqa: E402
+from assistant import llm  # noqa: E402
+from assistant import tools  # noqa: E402
+from assistant.rag import DATA_FOLDER  # noqa: E402
+from assistant.store import add_documents, get_collection  # noqa: E402
 
 MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
 RUNS_FOLDER = Path(__file__).parent / "runs"

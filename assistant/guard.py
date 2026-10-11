@@ -3,7 +3,7 @@
 import logging
 import os
 
-from llm import ask
+from assistant.llm import ask
 
 # A small classifier hosted by Groq.  It replies with a number from 0
 # to 1: how likely the text is an attempt to override instructions.
@@ -14,7 +14,7 @@ THRESHOLD = 0.5
 # The classifier reads only a short text, so longer ones are cut.
 MAX_GUARD_CHARS = 1500
 
-logger = logging.getLogger("rag_demo.guard")
+logger = logging.getLogger("assistant.guard")
 
 
 def injection_score(text, client=None):

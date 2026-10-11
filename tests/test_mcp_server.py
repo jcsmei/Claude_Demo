@@ -13,12 +13,12 @@ import pytest
 from mcp import Client
 
 import mcp_server
-import rag
-import tools
+from assistant import rag
+from assistant import tools
 from fakes import FakeEmbedding
-from store import add_documents, get_collection
+from assistant.store import add_documents, get_collection
 
-LOGGER = "rag_demo.mcp_server"
+LOGGER = "assistant.mcp_server"
 
 
 @pytest.fixture(autouse=True)

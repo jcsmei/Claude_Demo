@@ -14,10 +14,10 @@ import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
-import chat
-import rag
-import store
-import tools
+from assistant import chat
+from assistant import rag
+from assistant import store
+from assistant import tools
 from fakes import FakeEmbedding
 
 APP_FILE = str(Path(__file__).parent.parent / "app.py")

@@ -5,13 +5,12 @@ import uuid
 import chromadb
 import pytest
 
-import rag
-
 from fakes import FakeClient, FakeEmbedding, prompt_text
-from rag import (NOT_COVERED_MARKER, NOT_COVERED_MESSAGE, UNCLEAR_MARKER,
-                 UNCLEAR_MESSAGE, answer, build_prompt, format_history,
-                 standalone_question)
-from store import add_documents, get_collection
+from assistant import rag
+from assistant.rag import (NOT_COVERED_MARKER, NOT_COVERED_MESSAGE,
+                          UNCLEAR_MARKER, UNCLEAR_MESSAGE, answer,
+                          build_prompt, format_history, standalone_question)
+from assistant.store import add_documents, get_collection
 
 
 def test_build_prompt_includes_context_sources_and_question():

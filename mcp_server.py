@@ -14,9 +14,9 @@ from typing import TypedDict
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-import tools
-from rag import DATA_FOLDER, answer
-from store import add_documents, get_collection, search
+from assistant import tools
+from assistant.rag import DATA_FOLDER, answer
+from assistant.store import add_documents, get_collection, search
 
 server = MCPServer(
     "rag-demo",
@@ -29,7 +29,7 @@ server = MCPServer(
 )
 
 LOG_FILE = Path(__file__).parent / "logs" / "mcp_server.log"
-logger = logging.getLogger("rag_demo.mcp_server")
+logger = logging.getLogger("assistant.mcp_server")
 
 _collection_cache = None
 

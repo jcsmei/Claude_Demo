@@ -2,10 +2,12 @@
 
 from pathlib import Path
 
-from llm import ask
-from store import add_documents, get_collection, search
+from assistant.llm import ask
+from assistant.store import add_documents, get_collection, search
 
-DATA_FOLDER = Path(__file__).parent / "data"
+# The knowledge base sits at the top of the project, beside this
+# package.
+DATA_FOLDER = Path(__file__).parent.parent / "data"
 
 # The model is told to reply with one of these markers instead of an
 # answer, so the code can detect each case reliably.

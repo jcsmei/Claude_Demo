@@ -6,9 +6,9 @@ import groq
 import httpx
 import pytest
 
-import llm
+from assistant import llm
 from fakes import FakeClient
-from llm import ask
+from assistant.llm import ask
 
 
 def rate_limit_error():
@@ -117,7 +117,7 @@ def test_ask_does_not_fall_back_to_the_same_model():
 
 def test_ask_logs_the_switch_to_the_fallback(caplog):
     client = LimitedClient(limited=["main-model"])
-    with caplog.at_level("WARNING", logger="rag_demo.llm"):
+    with caplog.at_level("WARNING", logger="assistant.llm"):
         ask("What is RAG?", client=client, model="main-model")
     assert "main-model is rate limited" in caplog.text
     assert "using backup-model instead" in caplog.text

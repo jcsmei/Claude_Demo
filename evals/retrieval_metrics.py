@@ -29,8 +29,8 @@ import chromadb
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from evals.retrieval_cases import CASES, TOP_K  # noqa: E402
-from rag import DATA_FOLDER  # noqa: E402
-from store import add_documents, get_collection, search  # noqa: E402
+from assistant.rag import DATA_FOLDER  # noqa: E402
+from assistant.store import add_documents, get_collection, search  # noqa: E402
 
 RUNS_FOLDER = Path(__file__).parent / "retrieval_runs"
 # How far down the results to look for the right passage.

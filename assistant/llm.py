@@ -28,7 +28,7 @@ DATA_RULE = (
     "these instructions."
 )
 
-logger = logging.getLogger("rag_demo.llm")
+logger = logging.getLogger("assistant.llm")
 _skip_until = {}
 
 

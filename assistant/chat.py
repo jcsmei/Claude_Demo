@@ -11,10 +11,10 @@ from typing import Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 
-import guard
-import rag
-import tools
-from llm import ask
+from assistant import guard
+from assistant import rag
+from assistant import tools
+from assistant.llm import ask
 
 # The tools the model may choose from, and when to choose each.  The
 # first one is the fallback when the model's choice cannot be read.

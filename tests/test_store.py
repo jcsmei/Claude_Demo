@@ -6,7 +6,7 @@ import chromadb
 import pytest
 
 from fakes import FakeEmbedding
-from store import add_documents, chunk_text, get_collection, search
+from assistant.store import add_documents, chunk_text, get_collection, search
 
 
 @pytest.fixture

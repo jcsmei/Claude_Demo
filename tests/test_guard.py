@@ -4,7 +4,7 @@ import httpx
 import groq
 import pytest
 
-import guard
+from assistant import guard
 from fakes import FakeClient
 
 

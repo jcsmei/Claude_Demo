@@ -187,7 +187,7 @@ LangGraph graph itself, so it cannot drift from the code.
 
 ## 5. The decision flow: LangGraph
 
-File: [chat.py](chat.py)
+File: [assistant/chat.py](assistant/chat.py)
 
 LangGraph defines a workflow as a graph of nodes, with shared state
 and rules for which node runs next. The project uses it for
@@ -237,7 +237,8 @@ against the graph.
 
 ## 6. Answering from documents: RAG
 
-Files: [store.py](store.py), [rag.py](rag.py)
+Files: [assistant/store.py](assistant/store.py),
+[assistant/rag.py](assistant/rag.py)
 
 RAG makes a model answer from supplied documents. It has two phases.
 
@@ -311,7 +312,8 @@ any error.
 
 ## 7. The language model layer: Groq
 
-Files: [llm.py](llm.py), [guard.py](guard.py)
+Files: [assistant/llm.py](assistant/llm.py),
+[assistant/guard.py](assistant/guard.py)
 
 All model calls go through one function, `ask`. Groq hosts the models
 and serves them through an API.
@@ -355,7 +357,7 @@ call that will be refused. Each switch is logged.
 
 ## 8. Live data tools
 
-File: [tools.py](tools.py)
+File: [assistant/tools.py](assistant/tools.py)
 
 Three tools fetch information that documents cannot hold because it
 changes.
@@ -613,15 +615,17 @@ client.
 Claude_Demo/
 ├── app.py              chat page (entry point)
 ├── mcp_server.py       MCP server (entry point)
-├── chat.py             LangGraph decision flow
-├── rag.py              prompts, retrieval, answering
-├── store.py            chunking, Chroma storage, search
-├── tools.py            GitHub, NYC data, web search
-├── llm.py              model calls and fallback
-├── guard.py            prompt injection screening
+├── assistant/          the assistant, as a package
+│   ├── chat.py         LangGraph decision flow
+│   ├── rag.py          prompts, retrieval, answering
+│   ├── store.py        chunking, Chroma storage, search
+│   ├── tools.py        GitHub, NYC data, web search
+│   ├── llm.py          model calls and fallback
+│   └── guard.py        prompt injection screening
 ├── data/               the knowledge base: 10 documents
+├── docs/               the design for version 2
 ├── evals/              model and retrieval evaluation: scripts, run logs, report
-├── tests/              308 tests and shared fakes
+├── tests/              317 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code
 ├── .env.example        template for settings
@@ -631,7 +635,9 @@ Claude_Demo/
 ```
 
 Each module has one job, and none is longer than about 500 lines.
-The layout is flat, which suits a project of roughly 1,800 lines.
+The two entry points sit at the top, where Streamlit and MCP clients
+look for them. Everything they import is in the `assistant` package, so
+new modules have a place to go without crowding the top level.
 
 ## 17. Known limitations
 
@@ -657,6 +663,8 @@ The layout is flat, which suits a project of roughly 1,800 lines.
   not used.
 
 ## 18. Parameter reference
+
+The files named in the last column are in `assistant/`.
 
 | Parameter | Value | Where |
 |---|---|---|

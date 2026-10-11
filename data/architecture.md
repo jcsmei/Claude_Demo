@@ -75,7 +75,8 @@ prompts and the answering logic. store.py does chunking, storage and
 retrieval. tools.py fetches live data from GitHub, NYC Open Data and
 the web. llm.py makes the model calls and handles the fallback.
 guard.py screens messages for prompt injection. mcp_server.py is the
-MCP server.
+MCP server. app.py and mcp_server.py sit at the top of the project;
+the other six are in a package folder named assistant.
 
 ## What engineering terms describe the parts of this system?
 

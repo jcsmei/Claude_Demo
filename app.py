@@ -15,13 +15,13 @@ import groq
 import streamlit as st
 from dotenv import load_dotenv
 
-from chat import WEB_NOTICE, flow_diagram, respond
-from rag import DATA_FOLDER
-from tools import ToolFailure
-from store import DOCUMENT_SUFFIXES, add_documents, get_collection
+from assistant.chat import WEB_NOTICE, flow_diagram, respond
+from assistant.rag import DATA_FOLDER
+from assistant.tools import ToolFailure
+from assistant.store import DOCUMENT_SUFFIXES, add_documents, get_collection
 
 load_dotenv()
-logger = logging.getLogger("rag_demo.app")
+logger = logging.getLogger("assistant.app")
 
 DEFAULT_MAX_QUESTIONS = "20"
 EXAMPLE_QUESTIONS = (

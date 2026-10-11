@@ -5,11 +5,11 @@ import uuid
 import chromadb
 import pytest
 
-import chat
-import guard
-import tools
+from assistant import chat
+from assistant import guard
+from assistant import tools
 from fakes import FakeClient, FakeEmbedding, prompt_text
-from store import add_documents, get_collection
+from assistant.store import add_documents, get_collection
 
 COMMITS = [
     {"sha": "abc1234", "date": "2026-10-04T20:42:40Z",

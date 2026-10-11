@@ -13,7 +13,7 @@ from mcp import Client
 from mcp.client.streamable_http import (create_mcp_http_client,
                                         streamable_http_client)
 
-logger = logging.getLogger("rag_demo.tools")
+logger = logging.getLogger("assistant.tools")
 
 GITHUB_REPO = "jcsmei/Claude_Demo"
 GITHUB_URL = f"https://api.github.com/repos/{GITHUB_REPO}/commits"

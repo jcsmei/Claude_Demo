@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft for decision. Nothing in this document is built yet. |
+| **Status** | Draft for decision. Phase 1 (the restructure) is done; nothing else in this document is built yet. |
 | **Date** | 11 October 2026 |
 | **Author** | Jack Mei, with Claude Code |
 | **Scope** | Design, decisions, risks, build order and estimate for the second version of the assistant |
@@ -231,7 +231,7 @@ visitor, plus the catalog built from it.
 Claude_Demo/
 ├── app.py                 entry point, a few lines
 ├── mcp_server.py          entry point, a few lines
-├── rag_demo/
+├── assistant/
 │   ├── config.py          every setting in one place
 │   ├── llm/               model calls, fallback, screening
 │   ├── ingestion/         documents to chunks; files to tables

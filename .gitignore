@@ -8,7 +8,7 @@
 # Personal Claude Code settings for this machine
 .claude/settings.local.json
 
-# Chroma database - rebuilt from data/ by running: python rag.py
+# Chroma database - rebuilt from data/ by running: python -m assistant.rag
 chroma_db/
 
 # Log files written by the MCP server

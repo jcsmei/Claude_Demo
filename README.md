@@ -79,6 +79,7 @@ diagram from the graph itself.
 
 | File | Role |
 |---|---|
+| `assistant/` | The assistant itself, as a Python package. The five files below are inside it, along with `guard.py`, which screens messages for prompt injection. |
 | `llm.py` | Sends a question to a Groq model and returns the reply. |
 | `store.py` | Chunks documents, stores them in Chroma, searches them. |
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
@@ -126,9 +127,9 @@ question the documents do not cover is simply refused.
 ## Run
 
 ```powershell
-python llm.py          # one question straight to the model
-python rag.py          # index data/ and answer a question from it
-streamlit run app.py   # the chat page
+python -m assistant.llm   # one question straight to the model
+python -m assistant.rag   # index data/ and answer a question from it
+streamlit run app.py     # the chat page
 ```
 
 The first run downloads Chroma's embedding model (about 80 MB, once).

@@ -10,6 +10,7 @@ from evals.compare_models import (build_cases, contains, contains_any,
                                   contains_number, excludes, normalise,
                                   score)
 from evals.report import diverging_cases, load_runs, render
+from evals.retrieval_metrics import rank_of, summarise
 
 
 def test_normalise_treats_special_spaces_as_ordinary_ones():
@@ -132,3 +133,45 @@ def test_the_saved_runs_produce_a_report():
     assert report.startswith("# Model evaluation report")
     for run in runs:
         assert run["run_date"] in report
+
+
+def test_rank_of_finds_the_passage_across_line_breaks():
+    passages = ["About chunks.", "The codename is Blue\nHeron."]
+    assert rank_of("Blue Heron", passages) == 2
+    assert rank_of("Red Kite", passages) is None
+
+
+def test_summarise_computes_recall_and_mean_reciprocal_rank():
+    # Four questions: found first, first, second, and not found.
+    summary = summarise([1, 1, 2, None])
+    assert summary["questions"] == 4
+    assert summary["recall"] == {"1": 2, "3": 3, "5": 3, "10": 3}
+    # (1 + 1 + 1/2 + 0) / 4
+    assert summary["mean_reciprocal_rank"] == 0.625
+
+
+def test_summarise_handles_no_questions():
+    assert summarise([])["mean_reciprocal_rank"] == 0.0
+
+
+def test_report_includes_retrieval_quality_when_measured():
+    retrieval = [{"run_date": "2026-01-02", "chunks": 40,
+                  "retrieved_per_question": 5, "questions": 4,
+                  "recall": {"1": 2, "3": 3, "5": 4, "10": 4},
+                  "mean_reciprocal_rank": 0.708,
+                  "not_ranked_first": [
+                      {"question": "A slow one?", "rank": 5}]}]
+    cases = build_cases(total_drivers=100, expiring_2027=10)
+
+    report = render([sample_run()], cases, retrieval)
+
+    assert "## Retrieval quality" in report
+    assert "| Top 5 | 4 of 4 | 100% |" in report
+    assert "**Mean reciprocal rank: 0.71.**" in report
+    assert '- "A slow one?": position 5' in report
+    assert "| 2026-01-02 | 4 | 40 | 50% | 75% | 100% | 0.71 |" in report
+
+
+def test_report_omits_retrieval_when_not_measured():
+    cases = build_cases(total_drivers=100, expiring_2027=10)
+    assert "## Retrieval quality" not in render([sample_run()], cases)

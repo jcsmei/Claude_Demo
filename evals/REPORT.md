@@ -145,7 +145,46 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 
 - An informal comparison on 4 October 2026 put three questions to both models with identical retrieved passages. The larger model did not refuse a message it was meant to refuse, and gave a wrong expansion of the abbreviation MCP. That was under earlier prompts, and its outputs were not saved as a run, so it is recorded here as background and not as a result.
 
-## Run log
+## Retrieval quality
+
+Measured on 2026-10-11 with the retrieval benchmark: 125 real questions,
+each paired with the passage that answers it, searched across 164 chunks.
+This uses the real embedding model and no language model, so it costs no tokens.
+
+| The right passage is within the... | Questions | Share |
+|---|---|---|
+| Top 1 | 95 of 125 | 76% |
+| Top 3 | 117 of 125 | 94% |
+| Top 5 | 125 of 125 | 100% |
+| Top 10 | 125 of 125 | 100% |
+
+**Mean reciprocal rank: 0.85.** This is the average of 1 / position
+of the right passage, so 1.00 would mean it is always ranked first.
+
+The assistant retrieves 5 passages per question, so what matters in practice is the
+top-5 row.
+
+**What this does and does not measure.** This is context recall: whether retrieval finds
+the passage that holds the answer. It does not measure context precision, which is
+whether the other retrieved passages were relevant, or faithfulness, which is whether
+an answer stays within the passages. Those are not yet measured.
+
+Questions whose passage ranked below third:
+
+- "Did the bot ever give a wrong answer?": position 5
+- "Does the project use LangGraph?": position 4
+- "Did testing ever break the live app?": position 4
+- "What steps are in the graph?": position 5
+- "tell me about model being used": position 5
+- "How were the models evaluated?": position 4
+- "How did you compare the two models?": position 5
+- "What were the evaluation results?": position 4
+
+| Date | Questions | Chunks | Top 1 | Top 3 | Top 5 | MRR |
+|---|---|---|---|---|---|---|
+| 2026-10-11 | 125 | 164 | 76% | 94% | 100% | 0.85 |
+
+## Model run log
 
 | Date | Models | Result |
 |---|---|---|
@@ -154,8 +193,9 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 ## Running it again
 
 ```
-python -m evals.compare_models   # real model calls
-python -m evals.report           # rebuild this report
+python -m evals.compare_models     # models: real model calls
+python -m evals.retrieval_metrics  # retrieval: no model calls
+python -m evals.report             # rebuild this report
 ```
 
 A new run is saved beside the earlier ones, so results can be

@@ -1,8 +1,9 @@
 """Turn the saved evaluation runs into a readable report.
 
 Run with `python -m evals.report` from the project folder.  It reads
-every run in `evals/runs/` and writes `evals/REPORT.md`: the latest
-run in full, and a log of all runs.  It makes no model calls.
+every model run in `evals/runs/` and every retrieval measurement in
+`evals/retrieval_runs/`, and writes `evals/REPORT.md`: the latest of
+each in full, and a log of all runs.  It makes no model calls.
 
 The numbers and answers come from the run files.  The findings,
 decision and limitations are written by a person and stored in the run
@@ -16,6 +17,7 @@ from pathlib import Path
 from evals.compare_models import build_cases
 
 RUNS_FOLDER = Path(__file__).parent / "runs"
+RETRIEVAL_RUNS_FOLDER = Path(__file__).parent / "retrieval_runs"
 REPORT_FILE = Path(__file__).parent / "REPORT.md"
 
 
@@ -50,11 +52,86 @@ def diverging_cases(run):
     return [name for name in names if len(outcomes[name]) > 1]
 
 
-def render(runs, cases):
+def percent(part, whole):
+    return f"{100 * part / whole:.0f}%" if whole else "n/a"
+
+
+def render_retrieval(retrieval_runs):
+    """Return the report's section on retrieval quality, as lines."""
+    if not retrieval_runs:
+        return []
+    run = retrieval_runs[-1]
+    total = run["questions"]
+    lines = [
+        "## Retrieval quality",
+        "",
+        f"Measured on {run['run_date']} with the retrieval benchmark: "
+        f"{total} real questions,",
+        f"each paired with the passage that answers it, searched across "
+        f"{run['chunks']} chunks.",
+        "This uses the real embedding model and no language model, so "
+        "it costs no tokens.",
+        "",
+        "| The right passage is within the... | Questions | Share |",
+        "|---|---|---|",
+    ]
+    for k, hits in run["recall"].items():
+        lines.append(f"| Top {k} | {hits} of {total} | "
+                     f"{percent(hits, total)} |")
+    lines += [
+        "",
+        f"**Mean reciprocal rank: {run['mean_reciprocal_rank']:.2f}.** "
+        "This is the average of 1 / position",
+        "of the right passage, so 1.00 would mean it is always ranked "
+        "first.",
+        "",
+        f"The assistant retrieves {run['retrieved_per_question']} "
+        "passages per question, so what matters in practice is the",
+        f"top-{run['retrieved_per_question']} row.",
+        "",
+        "**What this does and does not measure.** This is context "
+        "recall: whether retrieval finds",
+        "the passage that holds the answer. It does not measure context "
+        "precision, which is",
+        "whether the other retrieved passages were relevant, or "
+        "faithfulness, which is whether",
+        "an answer stays within the passages. Those are not yet "
+        "measured.",
+        "",
+    ]
+    slow = [item for item in run.get("not_ranked_first", [])
+            if item["rank"] is None or item["rank"] > 3]
+    if slow:
+        lines += ["Questions whose passage ranked below third:", ""]
+        for item in slow:
+            place = item["rank"] if item["rank"] else "not found"
+            lines.append(f"- \"{cell(item['question'])}\": position "
+                         f"{place}")
+        lines.append("")
+    lines += [
+        "| Date | Questions | Chunks | Top 1 | Top 3 | Top 5 | MRR |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for past in retrieval_runs:
+        count = past["questions"]
+        recall = past["recall"]
+        lines.append(
+            f"| {past['run_date']} | {count} | {past['chunks']} | "
+            f"{percent(recall['1'], count)} | "
+            f"{percent(recall['3'], count)} | "
+            f"{percent(recall['5'], count)} | "
+            f"{past['mean_reciprocal_rank']:.2f} |"
+        )
+    lines.append("")
+    return lines
+
+
+def render(runs, cases, retrieval_runs=()):
     """Return the report as Markdown, for the latest of `runs`.
 
     `cases` are the evaluation's cases, used for each question and
-    what was expected of the answer.
+    what was expected of the answer.  `retrieval_runs` are the saved
+    retrieval measurements, oldest first.
     """
     run = runs[-1]
     models = list(run["results"])
@@ -154,8 +231,9 @@ def render(runs, cases):
             lines += [f"- {item}" for item in run[key]]
             lines.append("")
 
+    lines += render_retrieval(list(retrieval_runs))
     lines += [
-        "## Run log",
+        "## Model run log",
         "",
         "| Date | Models | Result |",
         "|---|---|---|",
@@ -172,8 +250,9 @@ def render(runs, cases):
         "## Running it again",
         "",
         "```",
-        "python -m evals.compare_models   # real model calls",
-        "python -m evals.report           # rebuild this report",
+        "python -m evals.compare_models     # models: real model calls",
+        "python -m evals.retrieval_metrics  # retrieval: no model calls",
+        "python -m evals.report             # rebuild this report",
         "```",
         "",
         "A new run is saved beside the earlier ones, so results can be",
@@ -188,9 +267,11 @@ def main():
     if not runs:
         raise SystemExit("No runs found in evals/runs/.")
     cases = build_cases(total_drivers=0, expiring_2027=0)
-    REPORT_FILE.write_text(render(runs, cases), encoding="utf-8",
-                           newline="\n")
-    print(f"Wrote {REPORT_FILE.name} from {len(runs)} run(s).")
+    retrieval_runs = load_runs(RETRIEVAL_RUNS_FOLDER)
+    REPORT_FILE.write_text(render(runs, cases, retrieval_runs),
+                           encoding="utf-8", newline="\n")
+    print(f"Wrote {REPORT_FILE.name} from {len(runs)} model run(s) and "
+          f"{len(retrieval_runs)} retrieval run(s).")
 
 
 if __name__ == "__main__":

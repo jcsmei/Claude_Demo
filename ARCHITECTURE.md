@@ -620,7 +620,7 @@ Claude_Demo/
 ├── llm.py              model calls and fallback
 ├── guard.py            prompt injection screening
 ├── data/               the knowledge base: 10 documents
-├── evals/              model evaluation: script, run log, report
+├── evals/              model and retrieval evaluation: scripts, run logs, report
 ├── tests/              308 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code

@@ -270,6 +270,10 @@ or removed text are replaced, not duplicated. Start each topic with a
 
 For the full technical specification, from the decision flow down to
 the parameters in the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
+For what is planned next, see the
+[version 2 design](docs/design_v2.md): the architecture, decisions,
+risks, build order and estimate. It is a draft, and none of it is
+built yet.
 
 Six of the documents are worth reading directly:
 

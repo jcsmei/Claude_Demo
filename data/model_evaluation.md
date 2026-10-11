@@ -61,12 +61,13 @@ qualities such as clarity and tone. What makes either one rigorous is
 the same: a fixed set of questions, criteria decided in advance, and
 recorded results. This project uses both.
 
-## How can the model evaluation be run again?
+## How can the model evaluation be run again, and where is it recorded?
 
 The evaluation is a script in the repository, in the folder named
-evals. Running python -m evals.compare_models repeats it on both
-models and saves the results to evals/results.json. It makes real
-model calls, about 14,000 tokens per model, so it is run by hand and
-is not part of the automated tests. Its scoring rules are covered by
-the automated tests, so that the checker itself cannot silently be
-wrong.
+evals, and every run is kept on record. Running python -m
+evals.compare_models repeats it and saves the run as a dated file
+beside the earlier ones. Running python -m evals.report rebuilds the
+report, evals/REPORT.md, which shows each question, what was expected,
+what each model answered and where they differed. It makes real model
+calls, about 14,000 tokens per model, so it is run by hand, not with
+the automated tests.

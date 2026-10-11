@@ -1,8 +1,61 @@
 {
   "run_date": "2026-10-06",
+  "roles": {
+    "openai/gpt-oss-20b": "Main model: writes the answers",
+    "openai/gpt-oss-120b": "Fallback when the main model is rate limited; proposed as the new default"
+  },
+  "method": [
+    "Eleven cases, each with its expected tool, expected status and a check on the answer's text, all fixed before the run.",
+    "Both models answered through the project's full decision flow: the same questions, knowledge base, prompts and tools. Only the model differed.",
+    "The model fallback was switched off, so a rate limit could not swap one model for the other.",
+    "Web search was switched off, so a refusal was measured as a refusal.",
+    "Facts, refusals, tool choice and SQL results were scored by rule. Clarity and tone were judged by reading every answer.",
+    "One run per model, at temperature 0."
+  ],
+  "decision": "Keep openai/gpt-oss-20b as the main model and openai/gpt-oss-120b as the fallback.",
+  "findings": [
+    {
+      "title": "Accuracy was a tie.",
+      "detail": "Both models gave the right fact in all five knowledge-base cases, refused the off-topic question, resolved the follow-up, chose the right tool, and wrote SQL that returned the exact figures."
+    },
+    {
+      "title": "They diverged on one case: the greeting.",
+      "detail": "For a message that is only a greeting, the instructions say to reply with a fixed marker and nothing else. The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer."
+    },
+    {
+      "title": "Why that matters.",
+      "detail": "The harm here is small: a visitor who says hi gets a reasonable reply either way. But the same mechanism, a fixed marker the code detects, is how the bot refuses questions its documents do not cover. A model that sets the instruction aside in one place is less dependable for the guardrails built on it."
+    },
+    {
+      "title": "Why it happened is not established.",
+      "detail": "A plausible reading is that the larger model leans towards being helpful over following a terse control instruction. One case is not enough to conclude it."
+    },
+    {
+      "title": "Read by a person, both were clear.",
+      "detail": "Answers from both were readable and correct. The larger model added slightly more detail, such as the date of the latest commit. Neither invented a fact in this run."
+    },
+    {
+      "title": "Cost was the same; speed could not be compared.",
+      "detail": "Each model used about 14,000 tokens over 24 calls. The recorded times include waits on the per-minute rate limit, most visibly in the two SQL cases, so they are not a fair measure of speed."
+    },
+    {
+      "title": "Why the smaller model stays.",
+      "detail": "With accuracy tied, the evaluation gave no reason to switch, and the smaller model followed the control instruction where the larger did not. It is also several times cheaper per token on a paid plan."
+    }
+  ],
+  "limitations": [
+    "Eleven cases is a small set. It can show a clear difference, not a subtle one.",
+    "One run per model. Models vary between runs even at temperature 0, so a single pass or fail may not repeat.",
+    "The rule-based checks measure whether a fact is present, not whether the whole answer is good.",
+    "Clarity and tone were judged by one reader with no scoring guide.",
+    "The questions were written by the same person who tuned the prompts on the smaller model, which may favour it."
+  ],
   "notes": [
     "Two rows for the case 'fact: codename' were re-scored by hand from fail to pass. Both answers were correct; the first version of the check did not allow for a non-breaking space.",
     "Timings include waits on the per-minute rate limit, most visibly in the SQL cases, and are not a fair speed comparison."
+  ],
+  "background": [
+    "An informal comparison on 4 October 2026 put three questions to both models with identical retrieved passages. The larger model did not refuse a message it was meant to refuse, and gave a wrong expansion of the abbreviation MCP. That was under earlier prompts, and its outputs were not saved as a run, so it is recorded here as background and not as a result."
   ],
   "summary": {
     "openai/gpt-oss-20b": {

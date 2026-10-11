@@ -340,7 +340,8 @@ model passed 11 of 11 and the larger 10 of 11, failing to return the
 required marker for a greeting. With accuracy tied and the smaller
 model more reliable on control instructions, it is the default. The
 script is [evals/compare_models.py](evals/compare_models.py), and
-the results are in [evals/results.json](evals/results.json). Eleven
+the full report, case by case, is
+[evals/REPORT.md](evals/REPORT.md). Eleven
 cases and one run each show no reason to switch; they do not show
 that the larger model is worse in general.
 
@@ -619,7 +620,7 @@ Claude_Demo/
 ├── llm.py              model calls and fallback
 ├── guard.py            prompt injection screening
 ├── data/               the knowledge base: 10 documents
-├── evals/              model evaluation script and saved results
+├── evals/              model evaluation: script, run log, report
 ├── tests/              308 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code

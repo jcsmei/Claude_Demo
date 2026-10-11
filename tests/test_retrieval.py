@@ -173,6 +173,8 @@ CASES = [
     ("Automated versus human evaluation?",
      "criteria decided in advance"),
     ("How do I rerun the evaluation?", "evals.compare_models"),
+    ("Is there a record of the evaluation?", "dated file"),
+    ("Where are the test results logged?", "dated file"),
     # The creator
     ("Who built this demo, and what is his background?",
      "technical solutions architect based in New York"),

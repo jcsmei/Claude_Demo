@@ -88,7 +88,7 @@ diagram from the graph itself.
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |
 | `data/` | The knowledge base: the documents the assistant answers from, written as questions and answers. |
 | `tests/` | Automated tests. |
-| `evals/` | A model evaluation: the same fixed cases run on each candidate model, with saved results. |
+| `evals/` | A model evaluation: the same fixed cases run on each candidate model, a dated log of runs, and a [report](evals/REPORT.md) of where the models differed and why. |
 | `.mcp.json` | Tells Claude Code how to start the MCP server. |
 
 ## Setup (Windows, PowerShell)

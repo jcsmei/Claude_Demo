@@ -9,6 +9,7 @@ import pytest
 from evals.compare_models import (build_cases, contains, contains_any,
                                   contains_number, excludes, normalise,
                                   score)
+from evals.report import diverging_cases, load_runs, render
 
 
 def test_normalise_treats_special_spaces_as_ordinary_ones():
@@ -71,3 +72,63 @@ def test_cases_cover_each_kind_of_behaviour():
     }
     assert any(case["history"] for case in cases)
     assert len({case["name"] for case in cases}) == len(cases)
+
+
+def test_every_case_says_in_words_what_is_expected():
+    for case in build_cases(total_drivers=100, expiring_2027=10):
+        assert case["expect"].endswith(".")
+
+
+def sample_run():
+    """Build a small run in the shape the evaluation saves."""
+    def row(case, passed, answer):
+        return {"case": case, "tool": "documents", "status": "answered",
+                "pass": passed, "seconds": 1.0, "answer": answer}
+    return {
+        "run_date": "2026-01-01",
+        "roles": {"maker/small": "Main model"},
+        "method": ["Same questions for each model."],
+        "decision": "Keep the small model.",
+        "findings": [{"title": "A tie.", "detail": "Both were right."}],
+        "limitations": ["Only two cases."],
+        "summary": {
+            "maker/small": {"passed": 2, "cases": 2, "model_calls": 4,
+                            "tokens": 1200},
+            "maker/large": {"passed": 1, "cases": 2, "model_calls": 4,
+                            "tokens": 1300},
+        },
+        "results": {
+            "maker/small": [row("greeting", True, "MARKER"),
+                            row("fact: codename", True, "Blue Heron")],
+            "maker/large": [row("greeting", False, "Hello | welcome"),
+                            row("fact: codename", True, "Blue Heron")],
+        },
+    }
+
+
+def test_diverging_cases_are_the_ones_models_disagree_on():
+    assert diverging_cases(sample_run()) == ["greeting"]
+
+
+def test_report_shows_result_divergence_findings_and_log():
+    cases = build_cases(total_drivers=100, expiring_2027=10)
+    report = render([sample_run()], cases)
+
+    assert "| `small` | 2 of 2 | 4 | 1,200 |" in report
+    assert "**Decision:** Keep the small model." in report
+    assert "### greeting" in report
+    assert "### fact: codename" not in report
+    assert "**A tie.** Both were right." in report
+    assert "- Only two cases." in report
+    assert "| 2026-01-01 | small, large | small 2/2; large 1/2 |" in report
+    # A pipe inside an answer must not break the table it sits in.
+    assert "Hello \\| welcome" in report
+
+
+def test_the_saved_runs_produce_a_report():
+    runs = load_runs()
+    assert runs, "no evaluation run is saved in evals/runs/"
+    report = render(runs, build_cases(total_drivers=0, expiring_2027=0))
+    assert report.startswith("# Model evaluation report")
+    for run in runs:
+        assert run["run_date"] in report

@@ -77,7 +77,8 @@ def test_welcome_explains_the_demo_before_login(app):
     assert app.title[0].value == "Jack Mei: RAG, LangGraph and MCP Demo"
     welcome = app.markdown[0].value
     assert "built by" in welcome and "Jack Mei" in welcome
-    assert "Built with Claude Code" in welcome
+    assert "Designed and architected by Jack Mei" in welcome
+    assert "with Claude Code as his AI" in welcome
     for term in ("**RAG**", "**LangGraph:**", "**MCP**"):
         assert term in welcome
 

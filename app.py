@@ -54,8 +54,8 @@ was built, or about Jack's background.
 Every answer shows where it came from, so nothing has to be taken on
 trust.
 
-Built with Claude Code, an AI coding assistant, with Jack as the
-architect.
+Designed and architected by Jack Mei, with Claude Code as his AI
+coding assistant.
 """
 # Shown under each answer, so the viewer knows where it came from.
 SOURCE_LABELS = {

@@ -221,6 +221,9 @@ def main():
     # Measure each model alone, and the documents path without the web.
     llm.FALLBACK_MODEL = ""
     tools.web_search_available = lambda: False
+    # The greeting case measures whether a model returns the marker it
+    # is told to, so the fixed courtesy replies are switched off.
+    chat.courtesy_reply = lambda text: None
 
     collection = get_collection()
     add_documents(collection, DATA_FOLDER)

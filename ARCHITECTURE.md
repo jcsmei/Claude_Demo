@@ -112,7 +112,7 @@ retrieval, tools and model code.
 ```mermaid
 flowchart LR
     message --> screen
-    screen -.->|refused| answer
+    screen -.->|refused or courtesy| answer
     screen -.-> choose_tool
     choose_tool -.-> documents
     documents -.->|not covered| web_search
@@ -131,7 +131,10 @@ Dashed arrows are decisions. In order:
 
 1. **Screen.** The message is refused if it is longer than 1,000
    characters or if a classifier scores it as a likely prompt
-   injection.
+   injection. A message that is only a courtesy, such as "thanks" or
+   "hi", is matched against a short fixed list and given a fixed
+   reply here, before any model is called. It does not count against
+   the question limit.
 2. **Choose a tool.** One model call picks a source (documents,
    GitHub or NYC data) and, if the message is a follow-up, rewrites it
    as a standalone question.
@@ -199,7 +202,7 @@ project's own functions.
 
 | Node | Job | Model calls |
 |---|---|---|
-| `screen` | Refuse a message that is too long or looks like an injection | 1 classifier |
+| `screen` | Refuse a message that is too long or looks like an injection; reply to a courtesy | 1 classifier, or none for a courtesy |
 | `choose_tool` | Pick a source and make the question standalone | 1 |
 | `documents` | Answer from retrieved passages | 1 |
 | `web_search` | Answer from web results | 1 |
@@ -212,7 +215,7 @@ project's own functions.
 
 | After | Goes to | When |
 |---|---|---|
-| `screen` | end, or `choose_tool` | The message was refused, or not |
+| `screen` | end, or `choose_tool` | The message was refused or was a courtesy, or not |
 | `choose_tool` | `documents`, `github` or `write_sql` | By the tool the model named |
 | `documents` | `web_search`, or end | Not covered and a web search is allowed, or otherwise |
 | `run_sql` | `write_sql`, or `data_answer` | The query failed or was empty and has not been retried, or otherwise |
@@ -290,7 +293,8 @@ the chunks.
 model is told to reply with a fixed marker. Code detects the marker
 and produces the refusal itself, so the wording is consistent and the
 program knows for certain whether a question was answered. A second
-marker covers greetings and messages too unclear to answer.
+marker covers messages too unclear to answer, and greetings worded in
+a way the fixed courtesy list does not hold.
 
 A distance cutoff was considered for refusals and rejected after
 measurement: an unanswerable question scored closer (1.05) than an
@@ -563,12 +567,12 @@ from the repository.
 
 ## 14. Testing and continuous integration
 
-There are 317 automated tests, run with pytest.
+There are 332 automated tests, run with pytest.
 
 | File | Test cases | Covers |
 |---|---|---|
-| `test_chat.py` | 47 | Tool choice, each route, retries, web fallback, privacy rules, injection |
-| `test_app.py` | 32 | The page, driven with Streamlit's test tool |
+| `test_chat.py` | 60 | Tool choice, each route, retries, web fallback, privacy rules, injection, courtesies |
+| `test_app.py` | 34 | The page, driven with Streamlit's test tool |
 | `test_tools.py` | 29 | GitHub, the SQL tool and its safety rules, web search |
 | `test_rag.py` | 17 | Prompts, markers, conversation memory, rewriting |
 | `test_mcp_server.py` | 15 | Tools called through a real in-process MCP client |
@@ -628,7 +632,7 @@ Claude_Demo/
 ├── data/               the knowledge base: 10 documents
 ├── docs/               the design for version 2
 ├── evals/              model and retrieval evaluation: scripts, run logs, report
-├── tests/              317 tests and shared fakes
+├── tests/              332 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code
 ├── .env.example        template for settings

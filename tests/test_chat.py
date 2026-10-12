@@ -513,3 +513,43 @@ def test_an_injected_instruction_cannot_unlock_a_private_web_search(
                  "home address.", collection, client=client)
 
     assert searched == []
+
+
+@pytest.mark.parametrize("message, reply_start", [
+    ("thanks", "You're welcome!"),
+    ("Thank you!!", "You're welcome!"),
+    ("ok, thanks 👍", "You're welcome!"),
+    ("Got it. Thanks a lot.", "You're welcome!"),
+    ("hi", "Hello! I can answer questions about"),
+    ("Good morning", "Hello! I can answer questions about"),
+    ("bye", "Goodbye"),
+])
+def test_courtesy_reply_recognises_a_courtesy(message, reply_start):
+    assert chat.courtesy_reply(message).startswith(reply_start)
+
+
+@pytest.mark.parametrize("message", [
+    "thanks, and what is a chunk?",
+    "hi, how does RAG work?",
+    "What is a thank you note?",
+    "ok",
+    "",
+])
+def test_courtesy_reply_leaves_everything_else_alone(message):
+    assert chat.courtesy_reply(message) is None
+
+
+def test_respond_answers_a_courtesy_without_calling_a_model(
+        collection, monkeypatch):
+    def unexpected(text, client=None):
+        raise AssertionError("the screening model was called")
+    monkeypatch.setattr(guard, "looks_like_injection", unexpected)
+    client = FakeClient("unused")
+
+    result = chat.respond("Thanks!", collection, client=client)
+
+    assert result["status"] == "courtesy"
+    assert result["tool"] == "courtesy"
+    assert result["answer"].startswith("You're welcome!")
+    assert result["answered"] is False
+    assert client.calls == []

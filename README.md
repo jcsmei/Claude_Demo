@@ -57,7 +57,7 @@ along the way.
 ```mermaid
 flowchart LR
     message --> screen
-    screen -.->|refused| answer
+    screen -.->|refused or courtesy| answer
     screen -.-> choose_tool
     choose_tool -.-> documents
     documents -.->|not covered| web_search

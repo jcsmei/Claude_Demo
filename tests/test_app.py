@@ -476,3 +476,41 @@ def test_secrets_are_removed_from_error_details(app, monkeypatch):
 
     detail = app.chat_message[1].code[0].value
     assert detail == "RuntimeError: bad key [redacted] used"
+
+
+def fake_courtesy(question, collection, history=None):
+    return {"answer": "You're welcome!", "status": "courtesy",
+            "answered": False, "tool": "courtesy", "sources": [],
+            "passages": [], "search_query": question}
+
+
+def test_courtesy_is_not_counted_as_a_question(app, monkeypatch):
+    log_in(app)
+    monkeypatch.setattr(chat, "respond", fake_courtesy)
+    ask(app, "thanks")
+    ask(app, "thanks")
+    ask(app, "thanks")
+
+    # The limit in these tests is 2 questions.
+    assert not app.exception
+    assert not app.chat_input[0].disabled
+    reply = app.chat_message[-1]
+    assert reply.markdown[0].value == "You're welcome!"
+    assert len(reply.caption) == 0
+    assert len(reply.expander) == 0
+
+
+def test_courtesy_is_left_out_of_the_conversation_sent_on(
+        app, monkeypatch):
+    seen = []
+
+    def recording(question, collection, history=None):
+        seen.append([message["content"] for message in history])
+        return fake_answer(question, collection)
+    log_in(app)
+    monkeypatch.setattr(chat, "respond", fake_courtesy)
+    ask(app, "thanks")
+    monkeypatch.setattr(chat, "respond", recording)
+    ask(app, "Which is the red planet?")
+
+    assert seen == [[]]

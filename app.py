@@ -297,7 +297,8 @@ def show_message(message):
         # Only the bot's answers have a source; a visitor's own
         # message and the reply to an unclear one do not.
         if (message.get("tool")
-                and message["status"] not in ("unclear", "blocked")):
+                and message["status"] not in ("unclear", "blocked",
+                                              "courtesy")):
             st.caption(SOURCE_LABELS[message["tool"]])
         if message.get("commits"):
             show_commits(message["commits"])
@@ -398,13 +399,20 @@ question = st.chat_input(
 if not messages and not question:
     question = pick_example()
 if question and question.strip() and not limit_reached:
-    st.session_state.asked += 1
-    # Failed answers are left out: they say nothing about the topic.
+    # Failed answers and courtesies are left out: they say nothing
+    # about the topic.
     history = [message for message in messages
-               if not message.get("error")]
-    messages.append({"role": "user", "content": question})
+               if not message.get("error") and not message.get("courtesy")]
     with st.spinner("Searching the documents..."):
-        messages.append(answer_question(question, history))
+        reply = answer_question(question, history)
+    # A courtesy such as "thanks" calls no model, so it is not counted
+    # as a question.
+    reply["courtesy"] = reply.get("status") == "courtesy"
+    if not reply["courtesy"]:
+        st.session_state.asked += 1
+    messages.append({"role": "user", "content": question,
+                     "courtesy": reply["courtesy"]})
+    messages.append(reply)
     # Redraw from the top so the chat box and the counter reflect the
     # question just asked.
     st.rerun()

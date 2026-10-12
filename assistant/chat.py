@@ -52,6 +52,31 @@ BLOCKED_MESSAGE = (
     "about the project instead."
 )
 
+# A message that is only a courtesy gets a fixed reply from code, so
+# no model is called for it.  The lists are deliberately short: any
+# other wording goes to the model as before.
+THANKS = frozenset({
+    "thanks", "thank you", "thanks a lot", "thanks so much",
+    "thanks very much", "thank you so much", "thank you very much",
+    "many thanks", "much appreciated", "thx", "ty", "cheers",
+})
+GREETINGS = frozenset({
+    "hi", "hello", "hey", "hi there", "hello there", "hey there",
+    "good morning", "good afternoon", "good evening", "greetings",
+})
+GOODBYES = frozenset({
+    "bye", "goodbye", "good bye", "bye bye", "see you", "see you later",
+    "good night", "take care", "have a good day", "have a nice day",
+})
+# Words that may come before a courtesy, as in "ok thanks".
+COURTESY_FILLERS = ("ok", "okay", "alright", "great", "awesome",
+                    "perfect", "cool", "nice", "got it")
+COURTESY_REPLIES = (
+    (THANKS, "You're welcome! Ask me anything else about the project."),
+    (GREETINGS, f"Hello! {rag.UNCLEAR_MESSAGE}"),
+    (GOODBYES, "Goodbye, and thanks for trying the demo!"),
+)
+
 # Shown at the start of an answer that came from the web, so the
 # reader is never left to assume it came from the documents.
 WEB_NOTICE = (
@@ -80,6 +105,24 @@ PROJECT_TERMS = (
 # so the bot cannot be used to look a person up by contact details.
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 PHONE_PATTERN = re.compile(r"(?:\d[\s().-]*){9,}")
+
+
+def courtesy_reply(text):
+    """Return the fixed reply to a message that is only a courtesy.
+
+    Return None for any other message.  The whole message must be a
+    courtesy: "thanks, and what is a chunk?" is still a question.
+    Capitals, punctuation and emoji are ignored.
+    """
+    phrase = " ".join(re.sub(r"[^a-z ]", " ", text.lower()).split())
+    candidates = {phrase}
+    for filler in COURTESY_FILLERS:
+        if phrase.startswith(f"{filler} "):
+            candidates.add(phrase[len(filler) + 1:])
+    for phrases, reply in COURTESY_REPLIES:
+        if candidates & phrases:
+            return reply
+    return None
 
 
 def choose_tool(question, history=None, client=None):
@@ -299,11 +342,26 @@ def blocked(question, message):
             "search_query": question}
 
 
+def courtesy(question, reply):
+    """Return the result for a courtesy answered with a fixed reply."""
+    return {"answer": reply, "status": "courtesy", "answered": False,
+            "tool": "courtesy", "sources": [], "passages": [],
+            "search_query": question}
+
+
 def screen_node(state, runtime: Runtime[ChatContext]):
-    """Refuse a message that is too long or looks like an injection."""
+    """Settle a message that needs no answer from a source.
+
+    A message that is too long is refused, a courtesy such as "thanks"
+    gets its fixed reply, and a message that looks like an injection
+    is refused.  The first two cost no model call.
+    """
     question = state["question"]
     if len(question) > MAX_QUESTION_CHARS:
         return {"result": blocked(question, TOO_LONG_MESSAGE)}
+    reply = courtesy_reply(question)
+    if reply:
+        return {"result": courtesy(question, reply)}
     if guard.looks_like_injection(question,
                                   client=runtime.context["client"]):
         return {"result": blocked(question, BLOCKED_MESSAGE)}
@@ -418,7 +476,8 @@ def build_graph():
     graph.add_node("data_answer", data_answer_node)
     graph.add_node("web_search", web_search_node)
     graph.add_edge(START, "screen")
-    # A message that was refused goes no further.
+    # A message that was refused, or was only a courtesy, goes no
+    # further.
     graph.add_conditional_edges(
         "screen",
         lambda state: "refuse" if state.get("result") else "continue",
@@ -472,7 +531,8 @@ def respond(question, collection, history=None, client=None):
     """Answer `question` with whichever tool fits it.
 
     Return the same dict as `rag.answer`, plus `tool`: the name of the
-    tool that produced the answer.  A github answer also has
+    tool that produced the answer.  A message that is only a courtesy
+    has the status "courtesy".  A github answer also has
     `commits`, the list the answer was drawn from, an nyc_data
     answer has `query`, the SQL that ran and its result, and a web
     answer has `web_results`.  A tool that fails raises

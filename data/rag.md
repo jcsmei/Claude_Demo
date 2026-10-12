@@ -171,10 +171,13 @@ rewritten question with the retrieved passages.
 
 ## What happens when a message is a greeting, thanks or unclear?
 
-The model is told to reply with a second fixed marker when a message
-is only a greeting or thanks, or is too unclear to answer. The code
-detects that marker and replies with a short list of what the bot can
-help with. This is different from a real question the documents do
+A message that is only a courtesy, such as "thanks", "hi" or "bye", is
+matched against a short fixed list in the code and gets a fixed
+friendly reply. No model is called, so it costs no tokens and does not
+count against the question limit. Any other wording goes to the model,
+which is told to reply with a second fixed marker when a message is a
+greeting or thanks, or is too unclear to answer. The code detects that
+marker and replies with a short list of what the bot can help with. This is different from a real question the documents do
 not cover, such as the capital of France, which is still refused.
 
 ## Why is the model's temperature set to 0?

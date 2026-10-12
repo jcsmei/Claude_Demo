@@ -349,38 +349,36 @@ def pick_example():
 
 
 def show_sidebar(remaining):
-    """Explain how the demo works and show what is left to ask."""
+    """Show what is left to ask and explain how the demo works."""
     with st.sidebar:
-        st.header("How this works")
+        st.metric("Questions left this session", remaining)
+        st.caption("Thanks and greetings are not counted.")
+        st.header("Built with")
         st.markdown(
-            "1. **Retrieve:** your question is compared with the "
-            "stored document chunks, and the closest ones are "
-            "fetched.\n"
-            "2. **Augment:** those chunks are placed in the prompt.\n"
-            "3. **Generate:** the model answers from them only."
-        )
-        st.header("Key terms")
-        st.markdown(
-            "- **Chunk:** a small piece of a document, a paragraph "
-            "or two, like an index card holding one idea.\n"
-            "- **Embedding:** a list of numbers that represents the "
-            "meaning of a chunk or a question.\n"
-            "- **Distance:** how far apart a chunk and the question "
-            "are in meaning. Lower is closer: 0 is identical, and "
-            "near 2 is unrelated."
+            "- **Orchestration:** LangGraph\n"
+            "- **RAG:** Chroma vector store, MiniLM embeddings\n"
+            "- **LLM:** gpt-oss-20b on Groq, gpt-oss-120b as fallback\n"
+            "- **Guardrails:** Llama Prompt Guard 2, read-only SQL\n"
+            "- **Data (external):** GitHub commit history, NYC Open "
+            "Data API\n"
+            "- **MCP server:** four tools for other AI assistants\n"
+            "- **MCP client:** Tavily web search\n"
+            "- **LLM evaluation:** fixed test cases, recall, MRR\n"
+            "- **Interface:** Streamlit\n"
+            "- **Testing:** pytest, GitHub Actions"
         )
         st.header("How the bot decides")
         st.caption(
             "Each message goes through this LangGraph flow. Dashed "
-            "arrows are choices: which tool fits, and whether a "
-            "failed SQL query is retried."
+            "arrows are choices: whether a message goes on, which "
+            "tool fits, whether a web search is needed, and whether "
+            "a failed SQL query is retried."
         )
         st.graphviz_chart(flow_diagram())
         st.header("Knowledge base")
         for path in sorted(DATA_FOLDER.iterdir()):
             if path.suffix.lower() in DOCUMENT_SUFFIXES:
                 st.markdown(f"- {path.name}")
-        st.metric("Questions left this session", remaining)
 
 
 st.set_page_config(page_title=PAGE_TITLE)

@@ -567,12 +567,12 @@ from the repository.
 
 ## 14. Testing and continuous integration
 
-There are 332 automated tests, run with pytest.
+There are 333 automated tests, run with pytest.
 
 | File | Test cases | Covers |
 |---|---|---|
 | `test_chat.py` | 60 | Tool choice, each route, retries, web fallback, privacy rules, injection, courtesies |
-| `test_app.py` | 34 | The page, driven with Streamlit's test tool |
+| `test_app.py` | 35 | The page, driven with Streamlit's test tool |
 | `test_tools.py` | 29 | GitHub, the SQL tool and its safety rules, web search |
 | `test_rag.py` | 17 | Prompts, markers, conversation memory, rewriting |
 | `test_mcp_server.py` | 15 | Tools called through a real in-process MCP client |
@@ -632,7 +632,7 @@ Claude_Demo/
 ├── data/               the knowledge base: 10 documents
 ├── docs/               the design for version 2
 ├── evals/              model and retrieval evaluation: scripts, run logs, report
-├── tests/              332 tests and shared fakes
+├── tests/              333 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code
 ├── .env.example        template for settings

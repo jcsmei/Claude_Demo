@@ -262,6 +262,17 @@ def test_blocked_message_is_explained_without_a_source(app, monkeypatch):
     assert len(reply.expander) == 0
 
 
+def test_sidebar_lists_the_technology_used(app):
+    log_in(app)
+    sidebar_text = " ".join(m.value for m in app.sidebar.markdown)
+    for category in ("Orchestration", "RAG", "LLM", "Guardrails",
+                     "Data (external)", "MCP server", "MCP client",
+                     "LLM evaluation", "Interface", "Testing"):
+        assert f"**{category}:**" in sidebar_text
+    captions = " ".join(c.value for c in app.sidebar.caption)
+    assert "Thanks and greetings are not counted." in captions
+
+
 def test_sidebar_shows_the_decision_flow(app):
     log_in(app)
     headers = [header.value for header in app.sidebar.header]
@@ -359,11 +370,13 @@ def test_clicking_an_example_question_asks_it(app):
     assert len(app.button) == 0
 
 
-def test_sidebar_explains_the_key_terms(app):
+def test_sidebar_shows_the_question_count_first(app):
     log_in(app)
-    sidebar_text = " ".join(m.value for m in app.sidebar.markdown)
-    for term in ("Chunk", "Embedding", "Distance"):
-        assert f"**{term}:**" in sidebar_text
+    assert app.sidebar[0].type == "metric"
+    assert app.sidebar.metric[0].value == "2"
+    headers = [header.value for header in app.sidebar.header]
+    assert headers == ["Built with", "How the bot decides",
+                       "Knowledge base"]
 
 
 def test_history_keeps_earlier_questions(app):

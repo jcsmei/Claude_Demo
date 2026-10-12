@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from assistant import mcp_client
 from assistant import tools
 
 
@@ -260,5 +261,5 @@ def test_web_search_explains_a_connection_failure(monkeypatch, error):
 
 
 def test_web_search_uses_only_the_plain_search_tool():
-    assert tools.TAVILY_TOOL == "tavily_search"
-    assert tools.TAVILY_MCP_URL.startswith("https://mcp.tavily.com/")
+    assert mcp_client.TAVILY_TOOL == "tavily_search"
+    assert mcp_client.TAVILY_MCP_URL.startswith("https://mcp.tavily.com/")

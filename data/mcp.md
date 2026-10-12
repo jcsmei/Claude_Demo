@@ -121,7 +121,7 @@ call tools on any other bot's MCP server. A server offers tools; a
 client calls them. The project's own server, rag-demo, can be called
 by others but does not call out. To use a second bot's tools, that
 bot's server would have to be added to the client code in the file
-tools.py, as Tavily's was.
+mcp_client.py, as Tavily's was.
 
 ## Can another bot or AI assistant use this project's tools?
 

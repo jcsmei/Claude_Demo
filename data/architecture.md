@@ -69,14 +69,16 @@ changes.
 
 ## What are the main components, and which file is each one in?
 
-There are eight code files, each with one job. app.py is the chat
+There are nine code files, each with one job. app.py is the chat
 page. chat.py is the LangGraph decision flow. rag.py holds the
 prompts and the answering logic. store.py does chunking, storage and
 retrieval. tools.py fetches live data from GitHub, NYC Open Data and
-the web. llm.py makes the model calls and handles the fallback.
-guard.py screens messages for prompt injection. mcp_server.py is the
-MCP server. app.py and mcp_server.py sit at the top of the project;
-the other six are in a package folder named assistant.
+the web. mcp_client.py is the MCP client that calls Tavily's MCP
+server for web search. llm.py makes the model calls and handles the
+fallback. guard.py screens messages for prompt injection.
+mcp_server.py is the MCP server. app.py and mcp_server.py sit at the
+top of the project; the other seven are in a package folder named
+assistant.
 
 ## What engineering terms describe the parts of this system?
 

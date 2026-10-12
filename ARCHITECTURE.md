@@ -443,6 +443,8 @@ goes to the log.
 
 ### 9.2 The client: Tavily's search server
 
+File: [assistant/mcp_client.py](assistant/mcp_client.py)
+
 The chat app connects to Tavily's hosted MCP server over HTTP and
 calls one tool, `tavily_search`, asking for three results. The key is
 sent in a header, not in the address, so it cannot appear in a log of
@@ -561,7 +563,7 @@ from the repository.
 
 ## 14. Testing and continuous integration
 
-There are 308 automated tests, run with pytest.
+There are 317 automated tests, run with pytest.
 
 | File | Test cases | Covers |
 |---|---|---|
@@ -573,7 +575,7 @@ There are 308 automated tests, run with pytest.
 | `test_llm.py` | 13 | Model calls, roles, fallback |
 | `test_store.py` | 11 | Chunking, storage, search |
 | `test_guard.py` | 9 | Screening and its failure behaviour |
-| `test_evals.py` | 10 | The model evaluation's scoring rules |
+| `test_evals.py` | 19 | The evaluation's scoring rules, retrieval metrics and report |
 | `test_retrieval.py` | 125 | The retrieval benchmark |
 
 **Fakes.** The models, the embedding model, GitHub, NYC Open Data and
@@ -620,6 +622,7 @@ Claude_Demo/
 │   ├── rag.py          prompts, retrieval, answering
 │   ├── store.py        chunking, Chroma storage, search
 │   ├── tools.py        GitHub, NYC data, web search
+│   ├── mcp_client.py   MCP client of Tavily's server
 │   ├── llm.py          model calls and fallback
 │   └── guard.py        prompt injection screening
 ├── data/               the knowledge base: 10 documents
@@ -685,6 +688,6 @@ The files named in the last column are in `assistant/`.
 | Commits shown to the model | 10 | `chat.py` |
 | GitHub results reused | 10 minutes | `tools.py` |
 | NYC data reused | 6 hours | `tools.py` |
-| Web results | 3, each cut to 500 characters | `tools.py` |
-| Outside request timeout | 15 seconds | `tools.py` |
+| Web results | 3, each cut to 500 characters | `mcp_client.py`, `tools.py` |
+| Outside request timeout | 15 seconds | `tools.py`, `mcp_client.py` |
 | Questions per visit | 20 | `app.py` |

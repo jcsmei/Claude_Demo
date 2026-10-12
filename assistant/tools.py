@@ -1,17 +1,14 @@
 """Tools that fetch live information from outside the project."""
 
-import asyncio
 import json
 import logging
 import os
 import sqlite3
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 import httpx
-from mcp import Client
-from mcp.client.streamable_http import (create_mcp_http_client,
-                                        streamable_http_client)
+
+from assistant.mcp_client import WEB_RESULTS, call_tavily
 
 logger = logging.getLogger("assistant.tools")
 
@@ -185,11 +182,6 @@ def query_license_data(sql, http_get=httpx.get):
             "updated": data["updated"]}
 
 
-TAVILY_MCP_URL = "https://mcp.tavily.com/mcp/"
-# Tavily's MCP server offers several tools.  Only the plain search is
-# used: the crawl and research tools can spend many credits per call.
-TAVILY_TOOL = "tavily_search"
-WEB_RESULTS = 3
 # Each result's text is cut to this length to limit the tokens used.
 SNIPPET_CHARS = 500
 
@@ -199,42 +191,14 @@ def web_search_available():
     return bool(os.environ.get("TAVILY_API_KEY"))
 
 
-async def _call_tavily(query, key):
-    """Call the search tool on Tavily's MCP server, as an MCP client."""
-    # The key travels in a header, not in the address, so that it
-    # cannot end up in a log of requested addresses.
-    http = create_mcp_http_client(headers={"Authorization": f"Bearer {key}"})
-    async with http:
-        transport = streamable_http_client(TAVILY_MCP_URL, http_client=http)
-        async with Client(transport) as client:
-            return await asyncio.wait_for(
-                client.call_tool(
-                    TAVILY_TOOL,
-                    {"query": query, "max_results": WEB_RESULTS},
-                ),
-                timeout=TIMEOUT_SECONDS,
-            )
-
-
-def call_tavily(query, key):
-    """Run `_call_tavily` from ordinary, non-async code."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(_call_tavily(query, key))
-    # Already inside an event loop: run in a thread with its own loop.
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, _call_tavily(query, key)).result()
-
-
 def web_search(query, call_tool=call_tavily):
     """Return up to `WEB_RESULTS` web results for `query`.
 
-    The search runs on Tavily's MCP server: this project connects to
-    it as an MCP client and calls its `tavily_search` tool.  Each
-    result is a dict with its `title`, `url` and `content`, a short
-    extract of the page.  The key is read from the TAVILY_API_KEY
-    setting.  `call_tool` exists so tests can pass in a fake.
+    The search runs on Tavily's MCP server, reached through the MCP
+    client in mcp_client.py.  Each result is a dict with its `title`,
+    `url` and `content`, a short extract of the page.  The key is
+    read from the TAVILY_API_KEY setting.  `call_tool` exists so tests
+    can pass in a fake.
     """
     key = os.environ.get("TAVILY_API_KEY", "")
     if not key:

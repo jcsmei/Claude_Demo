@@ -79,11 +79,12 @@ diagram from the graph itself.
 
 | File | Role |
 |---|---|
-| `assistant/` | The assistant itself, as a Python package. The five files below are inside it, along with `guard.py`, which screens messages for prompt injection. |
+| `assistant/` | The assistant itself, as a Python package. The six files below are inside it, along with `guard.py`, which screens messages for prompt injection. |
 | `llm.py` | Sends a question to a Groq model and returns the reply. |
 | `store.py` | Chunks documents, stores them in Chroma, searches them. |
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
-| `tools.py` | Fetches live information from outside: the project's commits on GitHub, taxi driver license counts from NYC Open Data, and web results through Tavily's MCP server. |
+| `tools.py` | Fetches live information from outside: the project's commits on GitHub, taxi driver license counts from NYC Open Data, and web results. |
+| `mcp_client.py` | The MCP client: connects to Tavily's MCP server and calls its search tool for `tools.py`. |
 | `chat.py` | A LangGraph graph that chooses the tool for each message, then answers with it. |
 | `mcp_server.py` | Exposes the search, ask, commit and data query tools to MCP clients, with logging. |
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |

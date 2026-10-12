@@ -145,7 +145,7 @@ CASES = [
     ("What is the difference between the knowledge base and the "
      "vector store?", "index is derived from it"),
     ("What is the ingestion pipeline?", "in three steps"),
-    ("Which file does what?", "eight code files"),
+    ("Which file does what?", "nine code files"),
     ("What are the guardrails?", "rules enforced by code"),
     ("How many model calls does an answer take?",
      "one small screening call"),

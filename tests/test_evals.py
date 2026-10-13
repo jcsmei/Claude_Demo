@@ -99,7 +99,7 @@ def sample_run():
                             "tokens": 1300},
         },
         "results": {
-            "maker/small": [row("greeting", True, "MARKER"),
+            "maker/small": [row("greeting", True, "SENTINEL"),
                             row("fact: codename", True, "Blue Heron")],
             "maker/large": [row("greeting", False, "Hello | welcome"),
                             row("fact: codename", True, "Blue Heron")],

@@ -50,28 +50,28 @@ def collection(tmp_path):
     return collection
 
 
-def test_choose_tool_reads_the_tool_and_the_rewritten_question():
+def test_route_reads_the_tool_and_the_rewritten_question():
     client = FakeClient(
         "TOOL: github\nQUESTION: What changed in the code recently?"
     )
-    assert chat.choose_tool("what's new?", HISTORY, client=client) == (
+    assert chat.route("what's new?", HISTORY, client=client) == (
         "github", "What changed in the code recently?"
     )
 
 
-def test_choose_tool_keeps_a_first_message_as_it_was_asked():
+def test_route_keeps_a_first_message_as_it_was_asked():
     client = FakeClient(
         "TOOL: github\nQUESTION: What changed in the code recently?"
     )
-    assert chat.choose_tool("what's new?", client=client) == (
+    assert chat.route("what's new?", client=client) == (
         "github", "what's new?"
     )
 
 
-def test_choose_tool_shows_the_model_the_tools_and_conversation():
+def test_route_shows_the_model_the_tools_and_conversation():
     client = FakeClient("TOOL: documents\nQUESTION: What tools has MCP?")
 
-    chat.choose_tool("what tools does it have?", HISTORY, client=client)
+    chat.route("what tools does it have?", HISTORY, client=client)
 
     sent = prompt_text(client.received)
     assert "- documents:" in sent and "- github:" in sent
@@ -85,16 +85,16 @@ def test_choose_tool_shows_the_model_the_tools_and_conversation():
     "",
     "TOOL: web\nQUESTION: " + "x" * 301,
 ])
-def test_choose_tool_falls_back_when_the_reply_cannot_be_used(reply):
+def test_route_falls_back_when_the_reply_cannot_be_used(reply):
     client = FakeClient(reply)
-    assert chat.choose_tool("hello there", client=client) == (
+    assert chat.route("hello there", client=client) == (
         "documents", "hello there"
     )
 
 
-def test_choose_tool_accepts_untidy_formatting():
+def test_route_accepts_untidy_formatting():
     client = FakeClient("tool:  GitHub \nquestion:   What   changed? ")
-    assert chat.choose_tool("what changed?", HISTORY, client=client) == (
+    assert chat.route("what changed?", HISTORY, client=client) == (
         "github", "What changed?"
     )
 
@@ -416,24 +416,24 @@ def test_flow_diagram_shows_the_web_search_fallback():
 
 def test_graph_routes_through_one_node_per_tool():
     nodes = set(chat.GRAPH.get_graph().nodes)
-    assert {"choose_tool", "documents", "github", "write_sql",
+    assert {"router", "documents", "github", "write_sql",
             "run_sql", "data_answer"} <= nodes
 
 
 def test_flow_diagram_shows_the_sql_retry_loop():
     diagram = chat.flow_diagram()
-    assert '"choose_tool" -> "write_sql" [style=dashed];' in diagram
+    assert '"router" -> "write_sql" [style=dashed];' in diagram
     assert '"run_sql" -> "write_sql" [style=dashed];' in diagram
     assert '"run_sql" -> "data_answer" [style=dashed];' in diagram
 
 
 def test_flow_diagram_shows_the_choice_between_tools():
     diagram = chat.flow_diagram()
-    assert '"message" -> "screen";' in diagram
-    assert '"screen" -> "choose_tool" [style=dashed];' in diagram
-    assert '"screen" -> "answer" [style=dashed];' in diagram
-    assert '"choose_tool" -> "documents" [style=dashed];' in diagram
-    assert '"choose_tool" -> "github" [style=dashed];' in diagram
+    assert '"message" -> "input_guardrail";' in diagram
+    assert '"input_guardrail" -> "router" [style=dashed];' in diagram
+    assert '"input_guardrail" -> "answer" [style=dashed];' in diagram
+    assert '"router" -> "documents" [style=dashed];' in diagram
+    assert '"router" -> "github" [style=dashed];' in diagram
     assert '"github" -> "answer";' in diagram
 
 
@@ -524,8 +524,8 @@ def test_an_injected_instruction_cannot_unlock_a_private_web_search(
     ("Good morning", "Hello! I can answer questions about"),
     ("bye", "Goodbye"),
 ])
-def test_courtesy_reply_recognises_a_courtesy(message, reply_start):
-    assert chat.courtesy_reply(message).startswith(reply_start)
+def test_small_talk_reply_recognises_small_talk(message, reply_start):
+    assert chat.small_talk_reply(message).startswith(reply_start)
 
 
 @pytest.mark.parametrize("message", [
@@ -535,11 +535,11 @@ def test_courtesy_reply_recognises_a_courtesy(message, reply_start):
     "ok",
     "",
 ])
-def test_courtesy_reply_leaves_everything_else_alone(message):
-    assert chat.courtesy_reply(message) is None
+def test_small_talk_reply_leaves_everything_else_alone(message):
+    assert chat.small_talk_reply(message) is None
 
 
-def test_respond_answers_a_courtesy_without_calling_a_model(
+def test_respond_answers_small_talk_without_calling_a_model(
         collection, monkeypatch):
     def unexpected(text, client=None):
         raise AssertionError("the screening model was called")
@@ -548,8 +548,8 @@ def test_respond_answers_a_courtesy_without_calling_a_model(
 
     result = chat.respond("Thanks!", collection, client=client)
 
-    assert result["status"] == "courtesy"
-    assert result["tool"] == "courtesy"
+    assert result["status"] == "small_talk"
+    assert result["tool"] == "small_talk"
     assert result["answer"].startswith("You're welcome!")
     assert result["answered"] is False
     assert client.calls == []

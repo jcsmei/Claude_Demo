@@ -15,10 +15,10 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 ## Method
 
 - Eleven cases, each with its expected tool, expected status and a check on the answer's text, all fixed before the run.
-- Both models answered through the project's full decision flow: the same questions, knowledge base, prompts and tools. Only the model differed.
+- Both models answered through the project's full orchestration graph: the same questions, knowledge base, prompts and tools. Only the model differed.
 - The model fallback was switched off, so a rate limit could not swap one model for the other.
 - Web search was switched off, so a refusal was measured as a refusal.
-- Facts, refusals, tool choice and SQL results were scored by rule. Clarity and tone were judged by reading every answer.
+- Facts, refusals, routing and SQL results were scored by rule. Clarity and tone were judged by reading every answer.
 - One run per model, at temperature 0.
 
 ## Result
@@ -35,7 +35,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 ### greeting
 
 - **Question:** hi
-- **Expected:** Returns the marker for an unclear message, so the code replies with what the bot can help with.
+- **Expected:** Returns the sentinel value for an unclear message, so the code replies with what the bot can help with.
 - **`gpt-oss-20b`:** pass, status `unclear`. Answer: "I can answer questions about how RAG works, the MCP server and its tools, how this project was built, the problems found along the way, and Jack Mei's background. What wo"
 - **`gpt-oss-120b`:** **FAIL**, status `answered`. Answer: "I can help you with: - Answering questions using the project’s document set (RAG) - Pulling live information from GitHub repositories - Accessing NYC Open Data for up‑to‑"
 
@@ -43,9 +43,9 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 
 **Accuracy was a tie.** Both models gave the right fact in all five knowledge-base cases, refused the off-topic question, resolved the follow-up, chose the right tool, and wrote SQL that returned the exact figures.
 
-**They diverged on one case: the greeting.** For a message that is only a greeting, the instructions say to reply with a fixed marker and nothing else. The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer.
+**They diverged on one case: the greeting.** For a message that is only a greeting, the instructions say to reply with a sentinel value and nothing else. The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer.
 
-**Why that matters.** The harm here is small: a visitor who says hi gets a reasonable reply either way. But the same mechanism, a fixed marker the code detects, is how the bot refuses questions its documents do not cover. A model that sets the instruction aside in one place is less dependable for the guardrails built on it.
+**Why that matters.** The harm here is small: a visitor who says hi gets a reasonable reply either way. But the same mechanism, a sentinel value the code detects, is how the bot refuses questions its documents do not cover. A model that sets the instruction aside in one place is less dependable for the guardrails built on it.
 
 **Why it happened is not established.** A plausible reading is that the larger model leans towards being helpful over following a terse control instruction. One case is not enough to conclude it.
 
@@ -65,7 +65,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 | concept | What is the difference between the knowledge base and the index? | Explains that the index is rebuilt from the knowledge base, the source of truth. | pass | pass |
 | abbreviation | What does MCP stand for? | Says Model Context Protocol and invents nothing else. | pass | pass |
 | refuse: off topic | What is the capital of France? | Refuses, because the documents do not cover it, and does not say Paris. | pass | pass |
-| greeting | hi | Returns the marker for an unclear message, so the code replies with what the bot can help with. | pass | **FAIL** |
+| greeting | hi | Returns the sentinel value for an unclear message, so the code replies with what the bot can help with. | pass | **FAIL** |
 | follow-up | what tools does it have? | Works out that 'it' is the MCP server and names its tools. | pass | pass |
 | route: github | What changed in the code most recently? | Chooses the GitHub tool and describes the latest commit. | pass | pass |
 | route: sql | How many active medallion taxi drivers are there in New York? | Chooses the data tool, writes SQL, and gives the exact total computed separately from the data. | pass | pass |

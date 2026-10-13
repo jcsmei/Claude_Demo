@@ -77,7 +77,7 @@ Two limits of that design motivate this one:
 ```mermaid
 flowchart TB
     visitor([Visitor]) --> app[Chat page]
-    app --> flow[Decision flow]
+    app --> flow[Orchestration]
 
     flow --> rag[Documents tool]
     flow --> sql[Data tool]
@@ -142,7 +142,7 @@ Dependencies point downward only.
 |---|---|
 | **Interfaces** | Chat page, MCP server |
 | **Orchestration** | The LangGraph flow |
-| **Capabilities** | Tools, retrieval, screening |
+| **Capabilities** | Tools, retrieval, input guardrail |
 | **Storage and ingestion** | Vector store, analytical store, operational store; loaders for documents and files |
 | **Providers** | Language models, outside APIs |
 
@@ -233,7 +233,7 @@ Claude_Demo/
 ├── mcp_server.py          entry point, a few lines
 ├── assistant/
 │   ├── config.py          every setting in one place
-│   ├── llm/               model calls, fallback, screening
+│   ├── llm/               model calls, fallback, input guardrail
 │   ├── ingestion/         documents to chunks; files to tables
 │   ├── storage/           vectors, tables, records
 │   ├── tools/             one file per tool

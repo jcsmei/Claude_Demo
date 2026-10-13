@@ -92,7 +92,7 @@ def test_ask_documents_says_when_the_documents_lack_the_answer(
         monkeypatch):
     monkeypatch.setattr(
         rag, "ask",
-        lambda prompt, client=None, **kwargs: rag.NOT_COVERED_MARKER
+        lambda prompt, client=None, **kwargs: rag.NOT_COVERED_SENTINEL
     )
     result = call("ask_documents", {"question": "Who won the World Cup?"})
     assert not result.is_error

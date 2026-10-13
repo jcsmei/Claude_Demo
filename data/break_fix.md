@@ -104,8 +104,8 @@ replied with a bare "I do not know" and still listed passages as if
 they were useful. Task: refuse clearly and reliably. Action: a
 distance cutoff was considered and then measured on nine questions;
 an unanswerable question scored closer (1.05) than an answerable one
-(1.65), so the cutoff was rejected. Instead the model returns a fixed
-marker that the code detects. Result: a consistent refusal message,
+(1.65), so the cutoff was rejected. Instead the model returns a
+sentinel value that the code detects. Result: a consistent refusal message,
 and passages labelled as not containing the answer. Lesson: measure
 before choosing a design.
 

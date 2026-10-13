@@ -43,8 +43,8 @@ along the way.
 - **Choosing the right tool:** text is searched by meaning, but a table
   is queried. For the taxi data the model writes read-only SQL, and the
   page shows the SQL and the rows it returned.
-- **LangGraph:** the decision flow is a graph. One node chooses a tool,
-  and the graph routes to that tool's nodes, including a retry loop for
+- **LangGraph:** the orchestration is a graph. A router node picks a
+  tool, and the graph routes to that tool's nodes, including a retry loop for
   SQL that fails.
 - **MCP (Model Context Protocol), as both server and client:** the
   project runs an MCP server that exposes four tools to any MCP
@@ -56,14 +56,14 @@ along the way.
 
 ```mermaid
 flowchart LR
-    message --> screen
-    screen -.->|refused or courtesy| answer
-    screen -.-> choose_tool
-    choose_tool -.-> documents
+    message --> input_guardrail
+    input_guardrail -.->|refused or small talk| answer
+    input_guardrail -.-> router
+    router -.-> documents
     documents -.->|not covered| web_search
     web_search --> answer
-    choose_tool -.-> github
-    choose_tool -.-> write_sql
+    router -.-> github
+    router -.-> write_sql
     write_sql --> run_sql
     run_sql -.->|failed or empty, once| write_sql
     run_sql -.-> data_answer
@@ -85,7 +85,7 @@ diagram from the graph itself.
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
 | `tools.py` | Fetches live information from outside: the project's commits on GitHub, taxi driver license counts from NYC Open Data, and web results. |
 | `mcp_client.py` | The MCP client: connects to Tavily's MCP server and calls its search tool for `tools.py`. |
-| `chat.py` | A LangGraph graph that chooses the tool for each message, then answers with it. |
+| `chat.py` | The orchestration: a LangGraph graph that routes each message to a tool, then answers with it. |
 | `mcp_server.py` | Exposes the search, ask, commit and data query tools to MCP clients, with logging. |
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |
 | `data/` | The knowledge base: the documents the assistant answers from, written as questions and answers. |
@@ -185,7 +185,7 @@ the allowance.
 The design assumes the model can be fooled, and limits what a
 fooled model could do. Five layers:
 
-- **Screening.** Each message is scored by Meta's Prompt Guard
+- **Input guardrail.** Each message is scored by Meta's Prompt Guard
   classifier, hosted by Groq, and refused if it looks like an
   attempt to override the instructions. Messages over 1,000
   characters are refused too.
@@ -270,7 +270,7 @@ or removed text are replaced, not duplicated. Start each topic with a
 
 ## How it was built, and what went wrong
 
-For the full technical specification, from the decision flow down to
+For the full technical specification, from the orchestration down to
 the parameters in the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
 For what is planned next, see the
 [version 2 design](docs/design_v2.md): the architecture, decisions,

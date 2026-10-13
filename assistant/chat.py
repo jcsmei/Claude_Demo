@@ -1,8 +1,8 @@
-"""Choose the tool that fits a message, then answer with it.
+"""Route each message to the tool that fits it, then answer with it.
 
-The flow is a LangGraph graph: one node chooses a tool, and the graph
-routes to the node for that tool.  Adding a tool means adding a node,
-an entry in `TOOL_GUIDE` and an edge.
+The orchestration is a LangGraph graph: a router node picks a tool,
+and the graph routes to the node for that tool.  Adding a tool means
+adding a node, an entry in `TOOL_GUIDE` and an edge.
 """
 
 import re
@@ -52,7 +52,7 @@ BLOCKED_MESSAGE = (
     "about the project instead."
 )
 
-# A message that is only a courtesy gets a fixed reply from code, so
+# A message that is only small talk gets a fixed reply from code, so
 # no model is called for it.  The lists are deliberately short: any
 # other wording goes to the model as before.
 THANKS = frozenset({
@@ -68,10 +68,10 @@ GOODBYES = frozenset({
     "bye", "goodbye", "good bye", "bye bye", "see you", "see you later",
     "good night", "take care", "have a good day", "have a nice day",
 })
-# Words that may come before a courtesy, as in "ok thanks".
-COURTESY_FILLERS = ("ok", "okay", "alright", "great", "awesome",
+# Words that may come before small talk, as in "ok thanks".
+SMALL_TALK_FILLERS = ("ok", "okay", "alright", "great", "awesome",
                     "perfect", "cool", "nice", "got it")
-COURTESY_REPLIES = (
+SMALL_TALK_REPLIES = (
     (THANKS, "You're welcome! Ask me anything else about the project."),
     (GREETINGS, f"Hello! {rag.UNCLEAR_MESSAGE}"),
     (GOODBYES, "Goodbye, and thanks for trying the demo!"),
@@ -84,7 +84,7 @@ WEB_NOTICE = (
     "the web. What follows comes from web pages, not from the official "
     "documents, and has not been verified by this project."
 )
-WEB_NOT_FOUND_MARKER = "NOT_FOUND"
+WEB_NOT_FOUND_SENTINEL = "NOT_FOUND"
 WEB_NOT_FOUND_MESSAGE = (
     "Neither the project's documents nor a web search found an answer "
     "to this question."
@@ -107,25 +107,25 @@ EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 PHONE_PATTERN = re.compile(r"(?:\d[\s().-]*){9,}")
 
 
-def courtesy_reply(text):
-    """Return the fixed reply to a message that is only a courtesy.
+def small_talk_reply(text):
+    """Return the fixed reply to a message that is only small talk.
 
     Return None for any other message.  The whole message must be a
-    courtesy: "thanks, and what is a chunk?" is still a question.
+    small talk: "thanks, and what is a chunk?" is still a question.
     Capitals, punctuation and emoji are ignored.
     """
     phrase = " ".join(re.sub(r"[^a-z ]", " ", text.lower()).split())
     candidates = {phrase}
-    for filler in COURTESY_FILLERS:
+    for filler in SMALL_TALK_FILLERS:
         if phrase.startswith(f"{filler} "):
             candidates.add(phrase[len(filler) + 1:])
-    for phrases, reply in COURTESY_REPLIES:
+    for phrases, reply in SMALL_TALK_REPLIES:
         if candidates & phrases:
             return reply
     return None
 
 
-def choose_tool(question, history=None, client=None):
+def route(question, history=None, client=None):
     """Return the tool for `question` and the question made standalone.
 
     One model call does both jobs: it picks a tool from `TOOL_GUIDE`
@@ -294,7 +294,7 @@ def answer_from_web(question, standalone, history=None, client=None):
         "anything about that project, its code or its tools. Do not "
         "include images or links in your answer. If the results do "
         "not answer the question, reply with only the word "
-        f"{WEB_NOT_FOUND_MARKER}."
+        f"{WEB_NOT_FOUND_SENTINEL}."
     )
     prompt = (
         f"Web search results:\n{listing or '(none)'}\n\n"
@@ -302,7 +302,7 @@ def answer_from_web(question, standalone, history=None, client=None):
         f"\n\nQuestion: {question}"
     )
     reply = ask(prompt, client=client, system=instructions)
-    found = WEB_NOT_FOUND_MARKER not in reply
+    found = WEB_NOT_FOUND_SENTINEL not in reply
     return {
         "answer": (f"{WEB_NOTICE}\n\n{reply}" if found
                    else WEB_NOT_FOUND_MESSAGE),
@@ -342,35 +342,35 @@ def blocked(question, message):
             "search_query": question}
 
 
-def courtesy(question, reply):
-    """Return the result for a courtesy answered with a fixed reply."""
-    return {"answer": reply, "status": "courtesy", "answered": False,
-            "tool": "courtesy", "sources": [], "passages": [],
+def small_talk(question, reply):
+    """Return the result for small talk answered with a fixed reply."""
+    return {"answer": reply, "status": "small_talk", "answered": False,
+            "tool": "small_talk", "sources": [], "passages": [],
             "search_query": question}
 
 
-def screen_node(state, runtime: Runtime[ChatContext]):
+def input_guardrail_node(state, runtime: Runtime[ChatContext]):
     """Settle a message that needs no answer from a source.
 
-    A message that is too long is refused, a courtesy such as "thanks"
+    A message that is too long is refused, small talk such as "thanks"
     gets its fixed reply, and a message that looks like an injection
     is refused.  The first two cost no model call.
     """
     question = state["question"]
     if len(question) > MAX_QUESTION_CHARS:
         return {"result": blocked(question, TOO_LONG_MESSAGE)}
-    reply = courtesy_reply(question)
+    reply = small_talk_reply(question)
     if reply:
-        return {"result": courtesy(question, reply)}
+        return {"result": small_talk(question, reply)}
     if guard.looks_like_injection(question,
                                   client=runtime.context["client"]):
         return {"result": blocked(question, BLOCKED_MESSAGE)}
     return {}
 
 
-def choose_tool_node(state, runtime: Runtime[ChatContext]):
+def router_node(state, runtime: Runtime[ChatContext]):
     """Pick the tool and make the question standalone."""
-    tool, standalone = choose_tool(
+    tool, standalone = route(
         state["question"], state["history"],
         client=runtime.context["client"],
     )
@@ -465,26 +465,26 @@ def after_documents(state):
 
 
 def build_graph():
-    """Return the compiled graph: screen, choose a tool, run its node."""
+    """Return the compiled graph: input guardrail, router, tool nodes."""
     graph = StateGraph(ChatState, context_schema=ChatContext)
-    graph.add_node("screen", screen_node)
-    graph.add_node("choose_tool", choose_tool_node)
+    graph.add_node("input_guardrail", input_guardrail_node)
+    graph.add_node("router", router_node)
     graph.add_node("documents", documents_node)
     graph.add_node("github", github_node)
     graph.add_node("write_sql", write_sql_node)
     graph.add_node("run_sql", run_sql_node)
     graph.add_node("data_answer", data_answer_node)
     graph.add_node("web_search", web_search_node)
-    graph.add_edge(START, "screen")
-    # A message that was refused, or was only a courtesy, goes no
+    graph.add_edge(START, "input_guardrail")
+    # A message that was refused, or was only small talk, goes no
     # further.
     graph.add_conditional_edges(
-        "screen",
+        "input_guardrail",
         lambda state: "refuse" if state.get("result") else "continue",
-        {"refuse": END, "continue": "choose_tool"},
+        {"refuse": END, "continue": "router"},
     )
     graph.add_conditional_edges(
-        "choose_tool", lambda state: state["tool"],
+        "router", lambda state: state["tool"],
         {"documents": "documents", "github": "github",
          "nyc_data": "write_sql"},
     )
@@ -531,8 +531,8 @@ def respond(question, collection, history=None, client=None):
     """Answer `question` with whichever tool fits it.
 
     Return the same dict as `rag.answer`, plus `tool`: the name of the
-    tool that produced the answer.  A message that is only a courtesy
-    has the status "courtesy".  A github answer also has
+    tool that produced the answer.  A message that is only small talk
+    has the status "small_talk".  A github answer also has
     `commits`, the list the answer was drawn from, an nyc_data
     answer has `query`, the SQL that ran and its result, and a web
     answer has `web_results`.  A tool that fails raises

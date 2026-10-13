@@ -4,7 +4,7 @@
 
 A technical overview of this bot: it is an AI assistant that answers
 from four sources and shows the evidence for each answer. Its parts
-are a Streamlit chat page, a LangGraph decision flow, RAG over a
+are a Streamlit chat page, LangGraph orchestration, RAG over a
 knowledge base stored in Chroma, live tools for GitHub, NYC Open Data
 and web search, an MCP server and client, and language models hosted
 by Groq.
@@ -21,19 +21,19 @@ names which source it came from.
 ## What is the technology stack of this assistant?
 
 The stack has seven layers. Streamlit provides the chat page.
-LangGraph orchestrates the decision flow. Chroma is the vector store,
+LangGraph handles orchestration. Chroma is the vector store,
 with the all-MiniLM-L6-v2 embedding model. Groq hosts the language
 models: openai/gpt-oss-20b for answers, openai/gpt-oss-120b as a
-fallback, and Llama Prompt Guard for screening. The MCP Python SDK
+fallback, and Llama Prompt Guard as the input guardrail. The MCP Python SDK
 provides the MCP server and client. GitHub, NYC Open Data and Tavily
 supply live data. Everything is written in Python 3.12.
 
 ## How does one message flow through the system, step by step?
 
-A message passes through six steps. One: screen it, and refuse it if
-it is too long or looks like a prompt injection. Two: choose a tool,
-which is the documents, GitHub or NYC data. Three: fetch, meaning
-retrieve passages, get commits or run a SQL query. Four: fall back to
+A message passes through six steps. One: the input guardrail refuses
+it if it is too long or looks like a prompt injection. Two: route it
+to a tool, which is the documents, GitHub or NYC data. Three: fetch,
+meaning retrieve passages, get commits or run a SQL query. Four: fall back to
 a web search only if the documents did not cover the question. Five:
 the model writes the answer from what was fetched and nothing else.
 Six: the page shows the source and the evidence.
@@ -70,7 +70,7 @@ changes.
 ## What are the main components, and which file is each one in?
 
 There are nine code files, each with one job. app.py is the chat
-page. chat.py is the LangGraph decision flow. rag.py holds the
+page. chat.py is the LangGraph orchestration. rag.py holds the
 prompts and the answering logic. store.py does chunking, storage and
 retrieval. tools.py fetches live data from GitHub, NYC Open Data and
 the web. mcp_client.py is the MCP client that calls Tavily's MCP
@@ -105,8 +105,8 @@ that they are not from the official documents.
 
 Every message gets one small screening call to a classifier. After
 that, an answer from the documents or from GitHub takes two model
-calls: one to choose the tool and one to write the answer. An answer
-from the NYC data takes three: choose the tool, write the SQL, explain
+calls: one to route the message and one to write the answer. An answer
+from the NYC data takes three: route the message, write the SQL, explain
 the result. A web answer also takes three, because the documents are
 tried first.
 

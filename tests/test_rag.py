@@ -7,8 +7,8 @@ import pytest
 
 from fakes import FakeClient, FakeEmbedding, prompt_text
 from assistant import rag
-from assistant.rag import (NOT_COVERED_MARKER, NOT_COVERED_MESSAGE,
-                          UNCLEAR_MARKER, UNCLEAR_MESSAGE, answer,
+from assistant.rag import (NOT_COVERED_SENTINEL, NOT_COVERED_MESSAGE,
+                          UNCLEAR_SENTINEL, UNCLEAR_MESSAGE, answer,
                           build_prompt, format_history, standalone_question)
 from assistant.store import add_documents, get_collection
 
@@ -24,13 +24,13 @@ def test_build_prompt_without_chunks_says_so():
     assert "(no documents found)" in build_prompt("Anything?", [])
 
 
-def test_instructions_ask_for_the_marker_when_not_covered():
-    assert NOT_COVERED_MARKER in rag.ANSWER_INSTRUCTIONS
+def test_instructions_ask_for_the_sentinel_when_not_covered():
+    assert NOT_COVERED_SENTINEL in rag.ANSWER_INSTRUCTIONS
 
 
 def test_build_prompt_holds_data_and_no_instructions():
     prompt = build_prompt("Anything?", [])
-    assert NOT_COVERED_MARKER not in prompt
+    assert NOT_COVERED_SENTINEL not in prompt
     assert "Use only the facts" not in prompt
 
 
@@ -163,7 +163,7 @@ def test_answer_searches_with_the_rewritten_follow_up(tmp_path):
 
 
 def test_answer_reports_an_unclear_message(collection):
-    client = FakeClient(UNCLEAR_MARKER)
+    client = FakeClient(UNCLEAR_SENTINEL)
 
     result = answer("hi", collection, client=client)
 
@@ -174,7 +174,7 @@ def test_answer_reports_an_unclear_message(collection):
 
 
 def test_answer_reports_when_the_documents_lack_the_answer(collection):
-    client = FakeClient(f" {NOT_COVERED_MARKER}\n")
+    client = FakeClient(f" {NOT_COVERED_SENTINEL}\n")
 
     result = answer("Who won the World Cup?", collection, client=client)
 

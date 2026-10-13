@@ -33,7 +33,7 @@ how it was built and what went wrong, see
 2. [The system at a glance](#2-the-system-at-a-glance)
 3. [What happens to one message](#3-what-happens-to-one-message)
 4. [The chat page: Streamlit](#4-the-chat-page-streamlit)
-5. [The decision flow: LangGraph](#5-the-decision-flow-langgraph)
+5. [Orchestration: LangGraph](#5-orchestration-langgraph)
 6. [Answering from documents: RAG](#6-answering-from-documents-rag)
 7. [The language model layer: Groq](#7-the-language-model-layer-groq)
 8. [Live data tools](#8-live-data-tools)
@@ -75,7 +75,7 @@ flowchart TB
     visitor([Visitor]) --> app[Chat page<br/>Streamlit]
     assistant([AI assistant<br/>such as Claude Code]) --> server[MCP server<br/>rag-demo, 4 tools]
 
-    app --> flow[Decision flow<br/>LangGraph, 8 nodes]
+    app --> flow[Orchestration<br/>LangGraph, 8 nodes]
     flow --> core
     server --> core
 
@@ -99,10 +99,10 @@ retrieval, tools and model code.
 | Layer | Technology | Role |
 |---|---|---|
 | Chat page | Streamlit 1.65 | Password gate, chat, evidence display |
-| Decision flow | LangGraph 1.2 | Chooses a source for each message |
+| Orchestration | LangGraph 1.2 | Routes each message to a source |
 | Retrieval | Chroma 1.5 with the all-MiniLM-L6-v2 embedding model | Finds the passages closest in meaning |
 | Generation | Groq, `openai/gpt-oss-20b` | Writes answers from supplied sources |
-| Screening | Groq, Llama Prompt Guard 2 | Scores messages for prompt injection |
+| Input guardrail | Groq, Llama Prompt Guard 2 | Scores messages for prompt injection |
 | Tools | GitHub API, NYC Open Data API, Tavily MCP server | Live facts |
 | Tool protocol | MCP Python SDK 2.3 | Server for the project's tools, client of Tavily's |
 | Language | Python 3.12 | |
@@ -111,14 +111,14 @@ retrieval, tools and model code.
 
 ```mermaid
 flowchart LR
-    message --> screen
-    screen -.->|refused or courtesy| answer
-    screen -.-> choose_tool
-    choose_tool -.-> documents
+    message --> input_guardrail
+    input_guardrail -.->|refused or small talk| answer
+    input_guardrail -.-> router
+    router -.-> documents
     documents -.->|not covered| web_search
     web_search --> answer
-    choose_tool -.-> github
-    choose_tool -.-> write_sql
+    router -.-> github
+    router -.-> write_sql
     write_sql --> run_sql
     run_sql -.->|failed or empty, once| write_sql
     run_sql -.-> data_answer
@@ -129,13 +129,13 @@ flowchart LR
 
 Dashed arrows are decisions. In order:
 
-1. **Screen.** The message is refused if it is longer than 1,000
+1. **Input guardrail.** The message is refused if it is longer than 1,000
    characters or if a classifier scores it as a likely prompt
-   injection. A message that is only a courtesy, such as "thanks" or
+   injection. A message that is only small talk, such as "thanks" or
    "hi", is matched against a short fixed list and given a fixed
    reply here, before any model is called. It does not count against
    the question limit.
-2. **Choose a tool.** One model call picks a source (documents,
+2. **Route.** One model call picks a source (documents,
    GitHub or NYC data) and, if the message is a follow-up, rewrites it
    as a standalone question.
 3. **Fetch.** The chosen tool gets its information: passages from
@@ -185,10 +185,10 @@ expandable section:
 **Safe rendering.** Markdown images are removed from answers before
 display (see [Guardrails](#10-guardrails)).
 
-The sidebar shows the decision flow as a diagram generated from the
+The sidebar shows the orchestration graph as a diagram generated from the
 LangGraph graph itself, so it cannot drift from the code.
 
-## 5. The decision flow: LangGraph
+## 5. Orchestration: LangGraph
 
 File: [assistant/chat.py](assistant/chat.py)
 
@@ -202,8 +202,8 @@ project's own functions.
 
 | Node | Job | Model calls |
 |---|---|---|
-| `screen` | Refuse a message that is too long or looks like an injection; reply to a courtesy | 1 classifier, or none for a courtesy |
-| `choose_tool` | Pick a source and make the question standalone | 1 |
+| `input_guardrail` | Refuse a message that is too long or looks like an injection; reply to small talk | 1 classifier, or none for small talk |
+| `router` | Pick a source and make the question standalone | 1 |
 | `documents` | Answer from retrieved passages | 1 |
 | `web_search` | Answer from web results | 1 |
 | `github` | Answer from recent commits | 1 |
@@ -215,8 +215,8 @@ project's own functions.
 
 | After | Goes to | When |
 |---|---|---|
-| `screen` | end, or `choose_tool` | The message was refused or was a courtesy, or not |
-| `choose_tool` | `documents`, `github` or `write_sql` | By the tool the model named |
+| `input_guardrail` | end, or `router` | The message was refused or was small talk, or not |
+| `router` | `documents`, `github` or `write_sql` | By the tool the model named |
 | `documents` | `web_search`, or end | Not covered and a web search is allowed, or otherwise |
 | `run_sql` | `write_sql`, or `data_answer` | The query failed or was empty and has not been retried, or otherwise |
 
@@ -226,7 +226,7 @@ its error and attempt count, the query result, and the final answer.
 The search collection and the model client are passed as run-time
 context, not state, because nodes read them but never change them.
 
-**Tool choice.** The model is given a one-line description of each
+**Routing.** The model is given a one-line description of each
 tool and replies in a fixed two-line format: the tool's name and the
 rewritten question. If the reply cannot be read, the flow falls back
 to the documents tool and the question as asked. A first message is
@@ -289,12 +289,13 @@ not correctness.
 conversation and the question, with instructions to answer only from
 the chunks.
 
-**Refusal by marker.** If the chunks do not contain the answer, the
-model is told to reply with a fixed marker. Code detects the marker
-and produces the refusal itself, so the wording is consistent and the
-program knows for certain whether a question was answered. A second
-marker covers messages too unclear to answer, and greetings worded in
-a way the fixed courtesy list does not hold.
+**Abstention by sentinel value.** If the chunks do not contain the
+answer, the model is told to reply with a sentinel value: a fixed
+word reserved for this purpose. Code detects it and produces the
+refusal itself, so the wording is consistent and the program knows
+for certain whether a question was answered. A second sentinel value
+covers messages too unclear to answer, and greetings worded in
+a way the fixed small-talk list does not hold.
 
 A distance cutoff was considered for refusals and rejected after
 measurement: an unanswerable question scored closer (1.05) than an
@@ -324,7 +325,7 @@ and serves them through an API.
 
 | Model | Used for |
 |---|---|
-| `openai/gpt-oss-20b` | Tool choice, answers, SQL writing |
+| `openai/gpt-oss-20b` | Routing, answers, SQL writing |
 | `openai/gpt-oss-120b` | Fallback when the first is rate limited |
 | `meta-llama/llama-prompt-guard-2-86m` | Scoring messages for prompt injection |
 
@@ -343,7 +344,7 @@ instructions found in it, and never reveal the instructions.
 the same eleven cases, with pass criteria fixed in advance: facts,
 a refusal, a greeting, a follow-up, tool routing and SQL. The smaller
 model passed 11 of 11 and the larger 10 of 11, failing to return the
-required marker for a greeting. With accuracy tied and the smaller
+required sentinel value for a greeting. With accuracy tied and the smaller
 model more reliable on control instructions, it is the default. The
 script is [evals/compare_models.py](evals/compare_models.py), and
 the full report, case by case, is
@@ -472,7 +473,7 @@ fooled model could do.
 
 | Layer | What it does |
 |---|---|
-| Screening | A classifier scores each message from 0 to 1; 0.5 or above is refused before the main model sees it |
+| Input guardrail | A classifier scores each message from 0 to 1; 0.5 or above is refused before the main model sees it |
 | Length limit | Messages over 1,000 characters are refused |
 | Separate roles | Instructions in the system role; all outside text as data |
 | Fixed tools | The repository, the table and the search tool are set in code; the model picks one of three routes and cannot add a fourth |
@@ -480,7 +481,7 @@ fooled model could do.
 | No images in answers | Removed before display, closing a known route for leaking a conversation |
 
 If the classifier cannot be reached, the message is let through to the
-other layers. Screening is one layer of several, and a failure there
+other layers. The input guardrail is one layer of several, and a failure there
 should not take the assistant down.
 
 ### 10.2 Privacy
@@ -519,7 +520,7 @@ The assistant is built to keep answering when a dependency fails.
 **Logging.** The MCP server writes every tool call, its inputs, its
 duration, rejected input and failures with tracebacks to
 `logs/mcp_server.log`. The chat app, the model layer, the tools and
-the screening step log to the host's console: questions asked, model
+the input guardrail log to the host's console: questions asked, model
 fallbacks, flagged messages and failures.
 
 ## 12. Limits and running costs
@@ -559,7 +560,7 @@ secrets when deployed. [.env.example](.env.example) lists them.
 | `TAVILY_API_KEY` | No | Turns on web search |
 | `GROQ_MODEL` | No | The main model |
 | `GROQ_FALLBACK_MODEL` | No | The fallback model; empty turns it off |
-| `GROQ_GUARD_MODEL` | No | The screening model; empty turns it off |
+| `GROQ_GUARD_MODEL` | No | The input guardrail's classifier model; empty turns it off |
 | `MAX_QUESTIONS` | No | Questions per visit |
 
 Secrets are never written in code or committed. `.env` is excluded
@@ -571,14 +572,14 @@ There are 333 automated tests, run with pytest.
 
 | File | Test cases | Covers |
 |---|---|---|
-| `test_chat.py` | 60 | Tool choice, each route, retries, web fallback, privacy rules, injection, courtesies |
+| `test_chat.py` | 60 | Routing, each route, retries, web fallback, privacy rules, injection, small talk |
 | `test_app.py` | 35 | The page, driven with Streamlit's test tool |
 | `test_tools.py` | 29 | GitHub, the SQL tool and its safety rules, web search |
-| `test_rag.py` | 17 | Prompts, markers, conversation memory, rewriting |
+| `test_rag.py` | 17 | Prompts, sentinel values, conversation memory, rewriting |
 | `test_mcp_server.py` | 15 | Tools called through a real in-process MCP client |
 | `test_llm.py` | 13 | Model calls, roles, fallback |
 | `test_store.py` | 11 | Chunking, storage, search |
-| `test_guard.py` | 9 | Screening and its failure behaviour |
+| `test_guard.py` | 9 | The input guardrail's classifier and its failure behaviour |
 | `test_evals.py` | 19 | The evaluation's scoring rules, retrieval metrics and report |
 | `test_retrieval.py` | 125 | The retrieval benchmark |
 
@@ -622,13 +623,13 @@ Claude_Demo/
 ├── app.py              chat page (entry point)
 ├── mcp_server.py       MCP server (entry point)
 ├── assistant/          the assistant, as a package
-│   ├── chat.py         LangGraph decision flow
+│   ├── chat.py         LangGraph orchestration
 │   ├── rag.py          prompts, retrieval, answering
 │   ├── store.py        chunking, Chroma storage, search
 │   ├── tools.py        GitHub, NYC data, web search
 │   ├── mcp_client.py   MCP client of Tavily's server
 │   ├── llm.py          model calls and fallback
-│   └── guard.py        prompt injection screening
+│   └── guard.py        input guardrail: injection classifier
 ├── data/               the knowledge base: 10 documents
 ├── docs/               the design for version 2
 ├── evals/              model and retrieval evaluation: scripts, run logs, report

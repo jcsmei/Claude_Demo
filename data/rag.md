@@ -128,9 +128,10 @@ bot can search.
 
 ## Why does the bot refuse some questions it cannot answer?
 
-The prompt tells the model to reply with a fixed marker when the
-retrieved chunks do not contain the answer. The code detects the
-marker instead of trusting the model's wording. For a general
+The prompt tells the model to reply with a sentinel value, a fixed
+word reserved for this purpose, when the retrieved chunks do not
+contain the answer. The code detects the sentinel value instead of
+trusting the model's wording. For a general
 question, the bot then says the documents do not cover it and searches
 the web. For a question about the project's creator, or when the web
 search is unavailable, it shows a standard message saying the
@@ -166,19 +167,20 @@ A follow-up such as "What tools does it have?" means nothing to the
 search on its own. So before searching, the language model rewrites
 the follow-up into a standalone question, for example "What tools does
 the MCP server have?". This is called query rewriting. It is done
-by the same small model call that chooses which tool to use. The page shows the
-rewritten question with the retrieved passages.
+by the same small model call that routes the message to a tool. The
+page shows the rewritten question with the retrieved passages.
 
 ## What happens when a message is a greeting, thanks or unclear?
 
-A message that is only a courtesy, such as "thanks", "hi" or "bye", is
+A message that is only small talk, such as "thanks", "hi" or "bye", is
 matched against a short fixed list in the code and gets a fixed
 friendly reply. No model is called, so it costs no tokens and does not
 count against the question limit. Any other wording goes to the model,
-which is told to reply with a second fixed marker when a message is a
-greeting or thanks, or is too unclear to answer. The code detects that
-marker and replies with a short list of what the bot can help with. This is different from a real question the documents do
-not cover, such as the capital of France, which is still refused.
+which is told to reply with a second sentinel value when a message is
+a greeting or thanks, or is too unclear to answer. The code detects
+it and replies with a short list of what the bot can help with. This
+is different from a real question the documents do not cover, such
+as the capital of France, which is still refused.
 
 ## Why is the model's temperature set to 0?
 

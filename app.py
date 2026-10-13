@@ -47,8 +47,8 @@ was built, or about Jack's background.
 - **MCP** (Model Context Protocol): a standard plug for tools. It
   lets other AI assistants use this one's tools, and lets this one use
   a web search tool built by someone else.
-- **LangGraph:** a decision flow that picks the right source for each
-  question: the documents, live data from GitHub and New York City, or
+- **LangGraph:** orchestration that routes each question to the right
+  source: the documents, live data from GitHub and New York City, or
   a web search.
 
 Every answer shows where it came from, so nothing has to be taken on
@@ -298,7 +298,7 @@ def show_message(message):
         # message and the reply to an unclear one do not.
         if (message.get("tool")
                 and message["status"] not in ("unclear", "blocked",
-                                              "courtesy")):
+                                              "small_talk")):
             st.caption(SOURCE_LABELS[message["tool"]])
         if message.get("commits"):
             show_commits(message["commits"])
@@ -397,19 +397,19 @@ question = st.chat_input(
 if not messages and not question:
     question = pick_example()
 if question and question.strip() and not limit_reached:
-    # Failed answers and courtesies are left out: they say nothing
+    # Failed answers and small talk are left out: they say nothing
     # about the topic.
     history = [message for message in messages
-               if not message.get("error") and not message.get("courtesy")]
+               if not message.get("error") and not message.get("small_talk")]
     with st.spinner("Searching the documents..."):
         reply = answer_question(question, history)
-    # A courtesy such as "thanks" calls no model, so it is not counted
+    # Small talk such as "thanks" calls no model, so it is not counted
     # as a question.
-    reply["courtesy"] = reply.get("status") == "courtesy"
-    if not reply["courtesy"]:
+    reply["small_talk"] = reply.get("status") == "small_talk"
+    if not reply["small_talk"]:
         st.session_state.asked += 1
     messages.append({"role": "user", "content": question,
-                     "courtesy": reply["courtesy"]})
+                     "small_talk": reply["small_talk"]})
     messages.append(reply)
     # Redraw from the top so the chat box and the counter reflect the
     # question just asked.

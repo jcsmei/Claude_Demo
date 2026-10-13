@@ -1,1 +1,1 @@
-"""The assistant: retrieval, tools, the decision flow and model calls."""
+"""The assistant: retrieval, tools, orchestration and model calls."""

@@ -149,7 +149,7 @@ One component at a time, each tested before the next was started:
 first the call to the language model, then storage and search in
 Chroma, then the two joined as RAG, then the MCP server, then the chat
 page. After that came conversation memory, the GitHub tool with tool
-choice, the rebuild of the decision flow on LangGraph, and the SQL
+routing, the rebuild of the orchestration on LangGraph, and the SQL
 tool for NYC Open Data. Building this way means that when something
 breaks, the fault is in the one piece just added.
 
@@ -210,8 +210,8 @@ again.
 ## Which technologies does the project use?
 
 Python 3.12, Chroma 1.5.9 as the vector database, the Groq SDK 1.7.0
-for the language model, the MCP Python SDK 2.3.0 for the server, LangGraph 1.2.12 for the
-decision flow,
+for the language model, the MCP Python SDK 2.3.0 for the server,
+LangGraph 1.2.12 for orchestration,
 Streamlit 1.65.0 for the chat page, and pytest for the tests.
 
 ## How does the bot choose which tool to use?

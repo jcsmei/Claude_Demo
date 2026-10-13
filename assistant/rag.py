@@ -9,10 +9,10 @@ from assistant.store import add_documents, get_collection, search
 # package.
 DATA_FOLDER = Path(__file__).parent.parent / "data"
 
-# The model is told to reply with one of these markers instead of an
-# answer, so the code can detect each case reliably.
-NOT_COVERED_MARKER = "NOT_IN_DOCUMENTS"
-UNCLEAR_MARKER = "MESSAGE_UNCLEAR"
+# Sentinel values: the model is told to reply with one of these
+# instead of an answer, so the code can detect each case reliably.
+NOT_COVERED_SENTINEL = "NOT_IN_DOCUMENTS"
+UNCLEAR_SENTINEL = "MESSAGE_UNCLEAR"
 NOT_COVERED_MESSAGE = (
     "The documents do not contain an answer to this question."
 )
@@ -56,8 +56,8 @@ ANSWER_INSTRUCTIONS = (
     "earlier answer, explain the same facts again more simply. If the "
     "question is only a greeting or thanks, or is too unclear to "
     "answer even with the conversation, reply with only the word "
-    f"{UNCLEAR_MARKER}. If the context does not contain the facts "
-    f"needed to answer, reply with only the word {NOT_COVERED_MARKER}."
+    f"{UNCLEAR_SENTINEL}. If the context does not contain the facts "
+    f"needed to answer, reply with only the word {NOT_COVERED_SENTINEL}."
 )
 REWRITE_INSTRUCTIONS = (
     "Rewrite the latest message as one question that can be understood "
@@ -140,9 +140,9 @@ def answer(question, collection, client=None, k=5, history=None,
     prompt = build_prompt(question, chunks, history=history)
     reply = ask(prompt, client=client, system=ANSWER_INSTRUCTIONS)
     sources = []
-    if UNCLEAR_MARKER in reply:
+    if UNCLEAR_SENTINEL in reply:
         status, reply = "unclear", UNCLEAR_MESSAGE
-    elif NOT_COVERED_MARKER in reply:
+    elif NOT_COVERED_SENTINEL in reply:
         status, reply = "not_covered", NOT_COVERED_MESSAGE
     else:
         status = "answered"

@@ -492,15 +492,15 @@ def test_secrets_are_removed_from_error_details(app, monkeypatch):
     assert detail == "RuntimeError: bad key [redacted] used"
 
 
-def fake_courtesy(question, collection, history=None):
-    return {"answer": "You're welcome!", "status": "courtesy",
-            "answered": False, "tool": "courtesy", "sources": [],
+def fake_small_talk(question, collection, history=None):
+    return {"answer": "You're welcome!", "status": "small_talk",
+            "answered": False, "tool": "small_talk", "sources": [],
             "passages": [], "search_query": question}
 
 
-def test_courtesy_is_not_counted_as_a_question(app, monkeypatch):
+def test_small_talk_is_not_counted_as_a_question(app, monkeypatch):
     log_in(app)
-    monkeypatch.setattr(chat, "respond", fake_courtesy)
+    monkeypatch.setattr(chat, "respond", fake_small_talk)
     ask(app, "thanks")
     ask(app, "thanks")
     ask(app, "thanks")
@@ -514,7 +514,7 @@ def test_courtesy_is_not_counted_as_a_question(app, monkeypatch):
     assert len(reply.expander) == 0
 
 
-def test_courtesy_is_left_out_of_the_conversation_sent_on(
+def test_small_talk_is_left_out_of_the_conversation_sent_on(
         app, monkeypatch):
     seen = []
 
@@ -522,7 +522,7 @@ def test_courtesy_is_left_out_of_the_conversation_sent_on(
         seen.append([message["content"] for message in history])
         return fake_answer(question, collection)
     log_in(app)
-    monkeypatch.setattr(chat, "respond", fake_courtesy)
+    monkeypatch.setattr(chat, "respond", fake_small_talk)
     ask(app, "thanks")
     monkeypatch.setattr(chat, "respond", recording)
     ask(app, "Which is the red planet?")

@@ -6,7 +6,7 @@ These are estimates, not exact measurements. An answer from the
 documents takes two model calls and roughly 2,000 to 3,000 tokens,
 most of it the five retrieved passages. An answer from GitHub takes
 two calls and somewhat fewer tokens. An answer from the taxi data
-takes three calls: choose the tool, write the query, explain the
+takes three calls: route the message, write the query, explain the
 result. A web answer is the most expensive: three calls and roughly
 1,000 tokens more than a documents answer, plus one Tavily search
 credit. Every message also gets one small screening call to a separate

@@ -11,7 +11,7 @@ just answer in one step.
 
 ## How does this bot use LangGraph?
 
-This bot uses LangGraph for its decision flow. Every message goes
+This bot uses LangGraph for orchestration. Every message goes
 through the same flowchart: first choose a source, then fetch the
 information, then answer. LangGraph runs that flowchart. It is what
 lets the bot answer one question from its documents, the next from
@@ -20,7 +20,7 @@ when its documents do not cover something.
 
 ## Does the project use LangGraph, and why?
 
-Yes. The decision flow in the file chat.py is a LangGraph graph. The
+Yes. The orchestration in the file chat.py is a LangGraph graph. The
 project started in plain Python, because the flow was a straight line:
 search, then answer. LangGraph was adopted when the flow gained
 branches and a retry loop, which is what a graph library is for. The
@@ -37,9 +37,9 @@ just happened. The whole flowchart is called a graph.
 
 ## What are the steps in this bot's graph?
 
-This bot's graph has eight nodes. screen refuses a message that is too
-long or looks like a prompt injection. choose_tool decides which
-source fits the message. documents answers from the project's
+This bot's graph has eight nodes. input_guardrail refuses a message
+that is too long or looks like a prompt injection. router decides
+which source fits the message. documents answers from the project's
 documents. web_search answers from the web when the documents do not
 cover the question. github answers from the project's recent code
 changes. write_sql writes a database query for the taxi data, run_sql
@@ -47,9 +47,9 @@ runs it, and data_answer explains the result.
 
 ## Where does the graph make decisions?
 
-The graph makes four decisions, each a conditional edge. After screen,
-a refused message ends the flow and any other goes on. After
-choose_tool, it goes to the documents, to GitHub or to the taxi data.
+The graph makes four decisions, each a conditional edge. After
+input_guardrail, a refused message ends the flow and any other goes
+on. After router, it goes to the documents, to GitHub or to the taxi data.
 After documents, it goes to a web search only if the documents did not
 cover the question and a web search is allowed. After run_sql, it goes
 back to write_sql once if the query failed or returned nothing.

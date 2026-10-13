@@ -4,7 +4,7 @@ Run with `python -m evals.compare_models` from the project folder.
 
 Every case states, before the run, the tool that should answer, the
 status the answer should have, and a check on its text.  Each model is
-put through the full decision flow, so the model is the only thing
+put through the full orchestration graph, so the model is the only thing
 that differs.  Each run is saved as `evals/runs/<date>.json`, beside
 earlier runs, and `python -m evals.report` turns them into
 `evals/REPORT.md`.
@@ -138,7 +138,8 @@ def build_cases(total_drivers, expiring_2027):
              "not say Paris.",
              excludes("Paris")),
         case("greeting", "hi", "documents", "unclear",
-             "Returns the marker for an unclear message, so the code "
+             "Returns the sentinel value for an unclear message, so the "
+             "code "
              "replies with what the bot can help with.",
              lambda answer: True),
         case("follow-up", "what tools does it have?",
@@ -221,9 +222,9 @@ def main():
     # Measure each model alone, and the documents path without the web.
     llm.FALLBACK_MODEL = ""
     tools.web_search_available = lambda: False
-    # The greeting case measures whether a model returns the marker it
-    # is told to, so the fixed courtesy replies are switched off.
-    chat.courtesy_reply = lambda text: None
+    # The greeting case measures whether a model returns the sentinel
+    # value it is told to, so the fixed small-talk replies are switched off.
+    chat.small_talk_reply = lambda text: None
 
     collection = get_collection()
     add_documents(collection, DATA_FOLDER)

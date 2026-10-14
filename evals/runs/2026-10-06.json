@@ -20,7 +20,7 @@
     },
     {
       "title": "They diverged on one case: the greeting.",
-      "detail": "For a message that is only a greeting, the instructions say to reply with a sentinel value and nothing else. The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer."
+      "detail": "For a message that is only a greeting, the instructions say to reply with a sentinel value and nothing else (a sentinel value is a fixed, reserved word, here MESSAGE_UNCLEAR, that the model returns instead of an answer; the code checks for that exact word and then writes the reply itself, so the program always knows for certain which case it is in, instead of trying to interpret the model's own wording). The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer."
     },
     {
       "title": "Why that matters.",

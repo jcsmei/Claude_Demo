@@ -35,7 +35,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 ### greeting
 
 - **Question:** hi
-- **Expected:** Returns the sentinel value for an unclear message, so the code replies with what the bot can help with.
+- **Expected:** Returns the sentinel value (a fixed, reserved word) for an unclear message, so the code replies with what the bot can help with.
 - **`gpt-oss-20b`:** pass, status `unclear`. Answer: "I can answer questions about how RAG works, the MCP server and its tools, how this project was built, the problems found along the way, and Jack Mei's background. What wo"
 - **`gpt-oss-120b`:** **FAIL**, status `answered`. Answer: "I can help you with: - Answering questions using the project’s document set (RAG) - Pulling live information from GitHub repositories - Accessing NYC Open Data for up‑to‑"
 
@@ -43,7 +43,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 
 **Accuracy was a tie.** Both models gave the right fact in all five knowledge-base cases, refused the off-topic question, resolved the follow-up, chose the right tool, and wrote SQL that returned the exact figures.
 
-**They diverged on one case: the greeting.** For a message that is only a greeting, the instructions say to reply with a sentinel value and nothing else. The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer.
+**They diverged on one case: the greeting.** For a message that is only a greeting, the instructions say to reply with a sentinel value and nothing else (a sentinel value is a fixed, reserved word, here MESSAGE_UNCLEAR, that the model returns instead of an answer; the code checks for that exact word and then writes the reply itself, so the program always knows for certain which case it is in, instead of trying to interpret the model's own wording). The smaller model did. The larger model wrote its own helpful reply instead, so the code saw an ordinary answer.
 
 **Why that matters.** The harm here is small: a visitor who says hi gets a reasonable reply either way. But the same mechanism, a sentinel value the code detects, is how the bot refuses questions its documents do not cover. A model that sets the instruction aside in one place is less dependable for the guardrails built on it.
 
@@ -65,7 +65,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 | concept | What is the difference between the knowledge base and the index? | Explains that the index is rebuilt from the knowledge base, the source of truth. | pass | pass |
 | abbreviation | What does MCP stand for? | Says Model Context Protocol and invents nothing else. | pass | pass |
 | refuse: off topic | What is the capital of France? | Refuses, because the documents do not cover it, and does not say Paris. | pass | pass |
-| greeting | hi | Returns the sentinel value for an unclear message, so the code replies with what the bot can help with. | pass | **FAIL** |
+| greeting | hi | Returns the sentinel value (a fixed, reserved word) for an unclear message, so the code replies with what the bot can help with. | pass | **FAIL** |
 | follow-up | what tools does it have? | Works out that 'it' is the MCP server and names its tools. | pass | pass |
 | route: github | What changed in the code most recently? | Chooses the GitHub tool and describes the latest commit. | pass | pass |
 | route: sql | How many active medallion taxi drivers are there in New York? | Chooses the data tool, writes SQL, and gives the exact total computed separately from the data. | pass | pass |
@@ -147,7 +147,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 
 ## Retrieval quality
 
-Measured on 2026-10-11 with the retrieval benchmark: 125 real questions,
+Measured on 2026-10-13 with the retrieval benchmark: 125 real questions,
 each paired with the passage that answers it, searched across 164 chunks.
 This uses the real embedding model and no language model, so it costs no tokens.
 
@@ -171,18 +171,19 @@ an answer stays within the passages. Those are not yet measured.
 
 Questions whose passage ranked below third:
 
-- "Did the bot ever give a wrong answer?": position 5
+- "Did the bot ever give a wrong answer?": position 4
 - "Does the project use LangGraph?": position 4
 - "Did testing ever break the live app?": position 4
 - "What steps are in the graph?": position 5
+- "Give me a technical overview": position 4
 - "tell me about model being used": position 5
 - "How were the models evaluated?": position 4
 - "How did you compare the two models?": position 5
-- "What were the evaluation results?": position 4
 
 | Date | Questions | Chunks | Top 1 | Top 3 | Top 5 | MRR |
 |---|---|---|---|---|---|---|
 | 2026-10-11 | 125 | 164 | 76% | 94% | 100% | 0.85 |
+| 2026-10-13 | 125 | 164 | 76% | 94% | 100% | 0.85 |
 
 ## Model run log
 

@@ -138,9 +138,9 @@ def build_cases(total_drivers, expiring_2027):
              "not say Paris.",
              excludes("Paris")),
         case("greeting", "hi", "documents", "unclear",
-             "Returns the sentinel value for an unclear message, so the "
-             "code "
-             "replies with what the bot can help with.",
+             "Returns the sentinel value (a fixed, reserved word) for "
+             "an unclear message, so the code replies with what the bot "
+             "can help with.",
              lambda answer: True),
         case("follow-up", "what tools does it have?",
              "documents", "answered",

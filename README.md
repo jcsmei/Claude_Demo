@@ -270,6 +270,10 @@ or removed text are replaced, not duplicated. Start each topic with a
 
 ## How it was built, and what went wrong
 
+For the same system explained at three levels (solution
+architecture, system design and detailed design), see
+[docs/architecture_levels.md](docs/architecture_levels.md).
+
 For the full technical specification, from the orchestration down to
 the parameters in the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
 For what is planned next, see the

@@ -102,6 +102,22 @@ response. Dotted line, optional flow. Dashed line, asynchronous flow.
 Numbers, the path of one question, in order; the two steps numbered 4
 are alternatives, chosen by the question.*
 
+**Constraint: cost.** Everything runs on free tiers, so the design uses
+a small model by default, limits each visit to 20 questions and caches
+tool results. In a paid deployment the running cost would come from
+two metered services, language-model tokens (Groq) and web searches
+(Tavily), plus hosting. The L2 and sequence sections below show
+where each is spent.
+
+**Decisions made at this level**
+
+| Decision | Alternative rejected | Why |
+|---|---|---|
+| Build the RAG pipeline | Buy a ready-made RAG platform | The demo exists to show the mechanics |
+| Hosted models through an API (Groq) | Run models on own hardware | No hardware, free tier, fast responses |
+| Free hosting (Streamlit Community Cloud) | A paid cloud platform | Cost, and enough for a demo |
+| Public repository | Private | The code is part of what is being shown |
+
 ## 2. L2 solution diagram
 
 **L2: AI assistant, services, data flows and integration points**
@@ -179,6 +195,33 @@ of one question; 7a, 7b and 7c are alternatives chosen by the router,
 and step 10 runs only when the documents do not cover a general
 question.*
 
+**Cost view**
+
+Where money would be spent in a paid deployment. Prices are left out
+because they change; the cost of each line is its volume times the
+provider's current price.
+
+| Cost item | Where | Driver | Today |
+|---|---|---|---|
+| Language-model tokens | Chat app and MCP server, to Groq | Model calls per message, and tokens per call | Free tier: 8,000 tokens a minute and 200,000 a day per model |
+| Classifier calls | Chat app, to Groq | One per message that reaches the input guardrail | Free tier, with its own allowance |
+| Web searches | Chat app, to Tavily | One credit per web answer | Free tier |
+| Hosting | Streamlit Community Cloud | Uptime and memory | Free |
+| Embeddings | Inside the chat app | Computed locally at indexing and per question | No per-call fee; uses the app's own compute |
+| GitHub and NYC Open Data | Chat app and MCP server | Requests | Free public APIs; results cached to stay within rate limits |
+
+Tokens are the main variable cost; the sequence section below breaks
+them down per message.
+
+**Decisions made at this level**
+
+| Decision | Alternative rejected | Why |
+|---|---|---|
+| Embedded vector store (Chroma in-process) | A separate vector database server | Small corpus; nothing extra to run |
+| Rebuild the index at startup | A persistent hosted index | The host's storage is temporary, and the index is derived from `data/` anyway |
+| One shared core, two front ends | Separate code for the chat page and the MCP server | Both give the same answers from the same code |
+| Text-to-SQL on a temporary SQLite table | Indexing the data as text for retrieval | Retrieval cannot total a column or count rows; SQL can, and can be checked in code |
+
 ## 3. Sequence diagram
 
 **One question answered from the documents, with the web fallback**
@@ -237,6 +280,54 @@ sequenceDiagram
 services. Solid arrow, a request; dashed arrow, its response. "alt"
 marks alternatives, one of which happens; "opt" marks an optional
 step. Numbers give the order of messages.*
+
+**Model calls and tokens per message**, by the path a message takes
+through the graph. Token figures are estimates from development, not
+measurements of live traffic.
+
+| Path | Classifier calls | Language-model calls | Tokens, roughly | Other metered use |
+|---|---|---|---|---|
+| Small talk | 0 | 0 | 0 | None |
+| Refused for length | 0 | 0 | 0 | None |
+| Refused by the input guardrail | 1 | 0 | Classifier only | None |
+| Documents | 1 | 2: route, answer | 2,000 to 3,000 | None |
+| GitHub | 1 | 2: route, answer | Somewhat fewer than documents | None |
+| NYC data | 1 | 3: route, write SQL, answer; 4 if the SQL is retried | Not measured separately; most messages use 2,500 to 4,000 | None |
+| Web fallback | 1 | 3: route, documents attempt, answer | About 1,000 more than documents | 1 Tavily search credit |
+
+Most of a documents answer's tokens are the five retrieved passages.
+The model evaluation measured about 14,000 tokens for its 11 cases on
+each model.
+
+**Design choices that keep token spend down**
+
+| Choice | Effect |
+|---|---|
+| Small talk answered in code | No model call for "thanks" or "hi" |
+| Routing and query rewriting in one call | One call where two would be usual |
+| 5 passages of about 500 characters each | Bounds the largest part of every prompt |
+| History cut to 4 messages of 400 characters | Bounds the conversation's share of every prompt |
+| Web results cut to 3, each 500 characters | Bounds the most expensive path |
+| Smaller model by default | Several times cheaper per token on a paid plan |
+| Cached GitHub and NYC results | Fewer outside requests; no effect on tokens |
+| 20 questions per visit | Caps the spend of any one visitor |
+
+**Main interfaces**
+
+| Function | Module | Takes | Returns |
+|---|---|---|---|
+| `respond` | `chat` | A question, the collection, recent history | A result: answer, status, tool, sources, evidence |
+| `route` | `chat` | A question and history | The tool to use and the question rewritten as a standalone question |
+| `answer` | `rag` | A question and the collection | The answer, its sources and the retrieved passages |
+| `search` | `store` | The collection, a query, how many results | Passages with their source and distance |
+| `ask` | `llm` | A prompt, instructions, a model | The model's reply, with fallback on a rate limit |
+| `looks_like_injection` | `guard` | A message | True if the classifier's score is 0.5 or above |
+| `query_license_data` | `tools` | A SQL statement | Columns and rows, after the statement passes the checks |
+| `call_tavily` | `mcp_client` | A query and a key | The search tool's result |
+
+Every result carries a **status**: `answered`, `not_covered`,
+`unclear`, `blocked` or `small_talk`. The page decides what to show
+from the status, not from the wording of the answer.
 
 Sources: [SAP BTP Solution Diagram Guidelines: foundation](https://sap.github.io/btp-solution-diagrams/docs/btp_guideline/foundation/),
 [areas](https://sap.github.io/btp-solution-diagrams/docs/btp_guideline/diagr_comp/areas/),

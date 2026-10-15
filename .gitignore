@@ -5,6 +5,9 @@
 # Virtual environment - recreate with: python -m venv .venv
 .venv/
 
+# Local-only copy of the C4 version of the architecture diagrams
+docs/architecture_levels.md
+
 # Personal Claude Code settings for this machine
 .claude/settings.local.json
 

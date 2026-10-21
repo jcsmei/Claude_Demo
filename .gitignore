@@ -8,6 +8,9 @@
 # Local-only copy of the C4 version of the architecture diagrams
 docs/architecture_levels.md
 
+# Original sample workbooks; only the genericised copies are published
+sample_data/original/
+
 # Personal Claude Code settings for this machine
 .claude/settings.local.json
 

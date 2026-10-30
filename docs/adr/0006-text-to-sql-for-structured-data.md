@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Date** | 2026-10-04 |
-| **Status** | Accepted |
+| **Status** | Accepted; amended by ADR-0017 |
 
 ## Context
 

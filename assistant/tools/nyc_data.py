@@ -23,7 +23,7 @@ def write_sql(question, failed_sql=None, error=None, client=None):
     the model so that it can correct the statement.
     """
     instructions = (
-        "Write one SQLite SELECT statement that answers the question "
+        "Write one DuckDB SELECT statement that answers the question "
         "from the table below. Reply with the SQL only, with no "
         "explanation.\n\n"
         f"{tools.LICENSE_SCHEMA}"

@@ -14,7 +14,7 @@ made.
 | [ADR-0003](0003-embedded-vector-store.md) | Chroma as an embedded vector store, rebuilt from the knowledge base | 2026-10-04 | Accepted |
 | [ADR-0004](0004-groq-models-chosen-by-evaluation.md) | Hosted models on Groq, with the smaller model chosen by evaluation | 2026-10-04 | Accepted |
 | [ADR-0005](0005-langgraph-orchestration.md) | LangGraph for orchestration, as a routing workflow | 2026-10-04 | Accepted; extended by ADR-0015 |
-| [ADR-0006](0006-text-to-sql-for-structured-data.md) | Query structured data with SQL, not retrieval | 2026-10-04 | Accepted |
+| [ADR-0006](0006-text-to-sql-for-structured-data.md) | Query structured data with SQL, not retrieval | 2026-10-04 | Accepted; amended by ADR-0017 |
 | [ADR-0007](0007-mcp-server-and-client.md) | MCP as both server and client | 2026-10-04 | Accepted |
 | [ADR-0008](0008-guardrails-in-code.md) | Guardrails enforced in code, with an input guardrail that fails open | 2026-10-05 | Accepted |
 | [ADR-0009](0009-call-groq-directly.md) | Call Groq directly, not through LangChain's ChatGroq | 2026-10-11 | Accepted |
@@ -25,6 +25,7 @@ made.
 | [ADR-0014](0014-tool-interface.md) | A small tool interface of our own | 2026-10-20 | Accepted |
 | [ADR-0015](0015-hybrid-workflow-and-agent.md) | Hybrid: a deterministic workflow, with an agent for data analysis | 2026-10-30 | Accepted |
 | [ADR-0016](0016-observability-and-system-of-record.md) | Observability and the system of record | 2026-10-15 | Proposed |
+| [ADR-0017](0017-duckdb-analytical-store.md) | DuckDB, in memory, as the analytical store | 2026-10-11 | Accepted; amends ADR-0006 |
 
 **Statuses.** Proposed: under discussion. Accepted: in force.
 Amended: partly changed by a later record. Superseded: replaced.

@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 from assistant import mcp_client
+from assistant import analytics
 from assistant import tools
 
 
@@ -169,11 +170,16 @@ def test_query_license_data_runs_a_select():
     ("DROP TABLE driver_licenses", "Only SELECT"),
     ("SELECT 1; SELECT 2", "Only one SQL statement"),
     ("SELECT 'The city' AS source", "must read from driver_licenses"),
-    ("SELECT missing FROM driver_licenses", "no such column"),
+    ("SELECT missing FROM driver_licenses", "not found"),
+    ("SELECT * FROM read_csv('requirements.txt'), driver_licenses",
+     "disabled by configuration"),
     ("WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) "
-     "SELECT COUNT(*) FROM c, driver_licenses", "interrupted"),
+     "SELECT COUNT(*) FROM c, driver_licenses", "ran longer than"),
 ])
-def test_query_license_data_rejects_unsafe_or_broken_sql(sql, message):
+def test_query_license_data_rejects_unsafe_or_broken_sql(
+        sql, message, monkeypatch):
+    # Keep the runaway query short.
+    monkeypatch.setattr(analytics, "MAX_QUERY_SECONDS", 0.5)
     with pytest.raises(tools.QueryError, match=message):
         tools.query_license_data(sql, http_get=FakeCity())
 

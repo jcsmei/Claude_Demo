@@ -400,7 +400,7 @@ Retrieval cannot total a column or count rows.
    numbers are never downloaded. The result is reused for six hours.
 2. **The model writes SQL** for the question, given the table's
    schema.
-3. **Code checks and runs it** on a temporary in-memory SQLite table.
+3. **Code checks and runs it** on a temporary in-memory DuckDB table.
 4. **One retry.** If the query fails or returns nothing, the error is
    shown to the model for one corrected attempt.
 5. **The model explains the rows.**
@@ -410,9 +410,12 @@ SQL safety is enforced in code, not requested of the model:
 - a single statement only, which must begin with `SELECT` or `WITH`
 - it must read from the data table, which prevents a query that
   returns invented text
-- the database is set to refuse any change
+- the database cannot read files or reach the network, and the
+  setting is locked
+- the query runs inside a transaction that is always rolled back, so
+  nothing it changes is kept
 - at most 50 rows are returned
-- a query is stopped after one million database steps
+- a query is stopped after 5 seconds
 
 ### 8.3 Web search
 
@@ -582,13 +585,13 @@ from the repository.
 
 ## 14. Testing and continuous integration
 
-There are 338 automated tests, run with pytest.
+There are 352 automated tests, run with pytest.
 
 | File | Test cases | Covers |
 |---|---|---|
 | `test_chat.py` | 60 | Routing, each route, retries, web fallback, privacy rules, injection, small talk |
 | `test_app.py` | 35 | The page, driven with Streamlit's test tool |
-| `test_tools.py` | 29 | GitHub, the SQL tool and its safety rules, web search |
+| `test_tools.py` | 30 | GitHub, the SQL tool and its safety rules, web search |
 | `test_rag.py` | 17 | Prompts, sentinel values, conversation memory, rewriting |
 | `test_mcp_server.py` | 15 | Tools called through a real in-process MCP client |
 | `test_llm.py` | 13 | Model calls, roles, fallback |
@@ -596,6 +599,7 @@ There are 338 automated tests, run with pytest.
 | `test_guard.py` | 9 | The input guardrail's classifier and its failure behaviour |
 | `test_evals.py` | 19 | The evaluation's scoring rules, retrieval metrics and report |
 | `test_tools_base.py` | 5 | The tool interface, and that every tool follows it |
+| `test_workbooks.py` | 13 | Loading the workbooks, the combined view, the catalog, and the locked analytical store |
 | `test_retrieval.py` | 125 | The retrieval benchmark |
 
 **Fakes.** The models, the embedding model, GitHub, NYC Open Data and
@@ -654,7 +658,7 @@ Claude_Demo/
 ├── data/               the knowledge base: 10 documents
 ├── docs/               design snapshots, decision records, diagrams
 ├── evals/              model and retrieval evaluation: scripts, run logs, report
-├── tests/              338 tests and shared fakes
+├── tests/              352 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code
 ├── .env.example        template for settings
@@ -708,10 +712,10 @@ The files named in the last column are in `assistant/`.
 | Injection threshold | 0.5 | `guard.py` |
 | Text sent to the classifier | first 1,500 characters | `guard.py` |
 | Longest message accepted | 1,000 characters | `chat.py` |
-| SQL attempts | 2 | `chat.py` |
-| SQL rows returned | 50 | `tools/__init__.py` |
-| SQL step limit | 1,000,000 | `tools/__init__.py` |
-| Commits shown to the model | 10 | `chat.py` |
+| SQL attempts | 2 | `tools/nyc_data.py` |
+| SQL rows returned | 50 | `analytics.py` |
+| SQL time limit | 5 seconds | `analytics.py` |
+| Commits shown to the model | 10 | `tools/github.py` |
 | GitHub results reused | 10 minutes | `tools/__init__.py` |
 | NYC data reused | 6 hours | `tools/__init__.py` |
 | Web results | 3, each cut to 500 characters | `mcp_client.py`, `tools/__init__.py` |

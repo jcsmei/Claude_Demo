@@ -134,7 +134,7 @@ flowchart LR
             router["Router and orchestration<br/>LangGraph"]
             rag["RAG retriever<br/>rag.py"]
             chroma[("Vector store<br/>Chroma, embedded")]
-            sql["SQL tool<br/>SQLite, in memory"]
+            sql["SQL tool<br/>DuckDB, in memory"]
             client["MCP client<br/>mcp_client.py"]
         end
     end
@@ -220,7 +220,7 @@ them down per message.
 | Embedded vector store (Chroma in-process) | A separate vector database server | Small corpus; nothing extra to run |
 | Rebuild the index at startup | A persistent hosted index | The host's storage is temporary, and the index is derived from `data/` anyway |
 | One shared core, two front ends | Separate code for the chat page and the MCP server | Both give the same answers from the same code |
-| Text-to-SQL on a temporary SQLite table | Indexing the data as text for retrieval | Retrieval cannot total a column or count rows; SQL can, and can be checked in code |
+| Text-to-SQL on a temporary in-memory table | Indexing the data as text for retrieval | Retrieval cannot total a column or count rows; SQL can, and can be checked in code |
 
 ## 3. Sequence diagram
 

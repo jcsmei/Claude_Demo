@@ -3,11 +3,12 @@
 import json
 import logging
 import os
-import sqlite3
 import time
 
+import duckdb
 import httpx
 
+from assistant import analytics
 from assistant.mcp_client import WEB_RESULTS, call_tavily
 
 logger = logging.getLogger("assistant.tools")
@@ -77,10 +78,7 @@ def recent_commits(limit=5, http_get=httpx.get):
 NYC_DATA_URL = "https://data.cityofnewyork.us/resource/jb3k-j3gp.json"
 # The city refreshes this dataset once a day.
 NYC_DATA_CACHE_SECONDS = 6 * 3600
-MAX_ROWS = 50
-# A query is stopped after this many database steps, so that a badly
-# written one cannot keep the app busy.
-MAX_QUERY_STEPS = 1_000_000
+MAX_ROWS = analytics.MAX_ROWS
 
 LICENSE_SCHEMA = """\
 Table driver_licenses: New York City medallion taxi drivers who hold an
@@ -159,22 +157,20 @@ def query_license_data(sql, http_get=httpx.get):
     if LICENSE_TABLE not in statement.lower():
         raise QueryError(f"The query must read from {LICENSE_TABLE}.")
     data = license_counts(http_get)
-    connection = sqlite3.connect(":memory:")
+    connection = analytics.connect()
     try:
         connection.execute(
-            "CREATE TABLE driver_licenses (expiry_month TEXT, "
+            "CREATE TABLE driver_licenses (expiry_month VARCHAR, "
             "expiry_year INTEGER, drivers INTEGER)"
         )
         connection.executemany(
             "INSERT INTO driver_licenses VALUES (?, ?, ?)", data["rows"]
         )
-        # Belt and braces: the database itself refuses any change.
-        connection.execute("PRAGMA query_only = ON")
-        connection.set_progress_handler(lambda: 1, MAX_QUERY_STEPS)
-        cursor = connection.execute(statement)
-        columns = [column[0] for column in cursor.description]
-        rows = [list(row) for row in cursor.fetchmany(MAX_ROWS)]
-    except sqlite3.Error as error:
+        analytics.lock(connection)
+        columns, rows = analytics.run_read_only(connection, statement)
+    except analytics.QueryTimeout as error:
+        raise QueryError(str(error)) from error
+    except duckdb.Error as error:
         raise QueryError(f"The SQL failed: {error}") from error
     finally:
         connection.close()

@@ -15,7 +15,7 @@ import groq
 import streamlit as st
 from dotenv import load_dotenv
 
-from assistant.chat import WEB_NOTICE, flow_diagram, respond
+from assistant.chat import TOOLS, WEB_NOTICE, flow_diagram, respond
 from assistant.rag import DATA_FOLDER
 from assistant.tools import ToolFailure
 from assistant.store import DOCUMENT_SUFFIXES, add_documents, get_collection
@@ -60,7 +60,7 @@ coding assistant.
 # Shown under each answer, so the viewer knows where it came from.
 SOURCE_LABELS = {
     "documents": "Source: the project's documents",
-    "github": "Source: GitHub, the project's live commit history",
+    **{tool.name: tool.source_label for tool in TOOLS},
     "nyc_data": ("Source: NYC Open Data, live counts of active "
                  "medallion taxi driver licenses"),
     "web": ("Source: a web search through Tavily's MCP server, not "
@@ -224,7 +224,7 @@ def answer_question(question, history):
         rewritten = None
     return {"role": "assistant", "content": content,
             "passages": result["passages"],
-            "commits": result.get("commits"),
+            "evidence": result.get("evidence"),
             "query": result.get("query"),
             "web_results": result.get("web_results"),
             "status": result["status"], "tool": result["tool"],
@@ -283,6 +283,13 @@ def show_web_results(results):
             st.text(result["content"])
 
 
+# How each kind of evidence is drawn.  Tools return evidence as data;
+# drawing it is the page's job.
+EVIDENCE_RENDERERS = {
+    "commits": show_commits,
+}
+
+
 def show_message(message):
     """Draw one chat message, with its retrieved passages if any."""
     with st.chat_message(message["role"]):
@@ -300,8 +307,9 @@ def show_message(message):
                 and message["status"] not in ("unclear", "blocked",
                                               "small_talk")):
             st.caption(SOURCE_LABELS[message["tool"]])
-        if message.get("commits"):
-            show_commits(message["commits"])
+        evidence = message.get("evidence")
+        if evidence:
+            EVIDENCE_RENDERERS[evidence.kind](evidence.items)
             return
         if message.get("query"):
             show_query(message["query"])

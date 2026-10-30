@@ -18,6 +18,7 @@ from assistant import chat
 from assistant import rag
 from assistant import store
 from assistant import tools
+from assistant.tools.base import Evidence
 from fakes import FakeEmbedding
 
 APP_FILE = str(Path(__file__).parent.parent / "app.py")
@@ -154,7 +155,7 @@ def test_github_answer_shows_its_source_and_commits(app, monkeypatch):
     def github_answer(question, collection, history=None):
         return {"answer": "Memory was added.", "status": "answered",
                 "answered": True, "tool": "github", "sources": ["GitHub"],
-                "passages": [], "commits": commits,
+                "passages": [], "evidence": Evidence("commits", commits),
                 "search_query": question}
     monkeypatch.setattr(chat, "respond", github_answer)
 

@@ -8,6 +8,7 @@ import pytest
 from assistant import chat
 from assistant import guard
 from assistant import tools
+from assistant.tools.base import Evidence
 from fakes import FakeClient, FakeEmbedding, prompt_text
 from assistant.store import add_documents, get_collection
 
@@ -127,7 +128,7 @@ def test_respond_answers_from_github(collection, monkeypatch):
     assert result["tool"] == "github"
     assert result["answer"] == "Conversation memory was added."
     assert result["status"] == "answered"
-    assert result["commits"] == COMMITS
+    assert result["evidence"] == Evidence("commits", COMMITS)
     assert result["passages"] == []
     sent = prompt_text(client.calls[1])
     assert "2026-10-04T20:42:40Z abc1234 Add conversation memory" in sent

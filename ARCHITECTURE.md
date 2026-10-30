@@ -362,7 +362,7 @@ call that will be refused. Each switch is logged.
 
 ## 8. Live data tools
 
-File: [assistant/tools.py](assistant/tools.py)
+File: [assistant/tools/](assistant/tools/)
 
 Three tools fetch information that documents cannot hold because it
 changes.

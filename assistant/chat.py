@@ -1,8 +1,10 @@
 """Route each message to the tool that fits it, then answer with it.
 
 The orchestration is a LangGraph graph: a router node picks a tool,
-and the graph routes to the node for that tool.  Adding a tool means
-adding a node, an entry in `TOOL_GUIDE` and an edge.
+and the graph routes to the node for that tool.  A tool that follows
+the interface in `tools/base.py` is added by listing it in `TOOLS`.
+The tools not yet moved onto it still need a node, an entry in
+`TOOL_GUIDE` and an edge.
 """
 
 import re
@@ -15,6 +17,12 @@ from assistant import guard
 from assistant import rag
 from assistant import tools
 from assistant.llm import ask
+from assistant.tools.base import ToolContext
+from assistant.tools.github import GITHUB
+
+# Tools that follow the interface in tools/base.py.  The others move
+# onto it one at a time.
+TOOLS = (GITHUB,)
 
 # The tools the model may choose from, and when to choose each.  The
 # first one is the fallback when the model's choice cannot be read.
@@ -25,10 +33,7 @@ TOOL_GUIDE = {
         "comes from and how its tools work, greetings and unclear "
         "messages"
     ),
-    "github": (
-        "the latest changes to the project's code: recent commits, "
-        "updates, or what changed and when"
-    ),
+    **{tool.name: tool.description for tool in TOOLS},
     "nyc_data": (
         "only for a count: how many active New York City medallion "
         "taxi drivers there are, or how many licenses expire in a "
@@ -36,7 +41,6 @@ TOOL_GUIDE = {
     ),
 }
 DEFAULT_TOOL = "documents"
-COMMITS_SHOWN = 10
 # A failed SQL query is rewritten once before the tool gives up.
 MAX_SQL_ATTEMPTS = 2
 
@@ -167,32 +171,6 @@ def route(question, history=None, client=None):
             if history and value and len(value) <= rag.MAX_QUERY_CHARS:
                 standalone = value
     return tool, standalone
-
-
-def answer_from_github(question, standalone, history=None, client=None):
-    """Answer `question` from the project's latest commits on GitHub."""
-    commits = tools.recent_commits(COMMITS_SHOWN)
-    listing = "\n".join(
-        f"{commit['date']} {commit['sha']} {commit['message']}"
-        for commit in commits
-    )
-    instructions = (
-        "You answer questions about a demo project. Use only the list "
-        "of its latest code changes, newest first; each line is a "
-        "date, a short ID and a summary. Explain conversationally in "
-        "plain language. Each summary is all that is known about a "
-        "change, so do not describe details beyond it, do not invent "
-        "changes, and do not spell out abbreviations."
-    )
-    prompt = (
-        f"Latest changes:\n{listing}\n\n"
-        f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
-        f"\n\nQuestion: {question}"
-    )
-    return {"answer": ask(prompt, client=client, system=instructions),
-            "status": "answered", "answered": True, "tool": "github",
-            "sources": ["GitHub"], "passages": [], "commits": commits,
-            "search_query": standalone}
 
 
 def write_sql(question, failed_sql=None, error=None, client=None):
@@ -388,13 +366,18 @@ def documents_node(state, runtime: Runtime[ChatContext]):
     return {"result": result}
 
 
-def github_node(state, runtime: Runtime[ChatContext]):
-    """Answer from the project's latest commits on GitHub."""
-    result = answer_from_github(
-        state["question"], state["search_query"], state["history"],
-        runtime.context["client"],
-    )
-    return {"result": result}
+def as_graph_node(tool):
+    """Return a graph node that answers the message with `tool`."""
+    def node(state, runtime: Runtime[ChatContext]):
+        context = ToolContext(
+            question=state["question"],
+            search_query=state["search_query"],
+            history=state["history"],
+            client=runtime.context["client"],
+        )
+        return {"result": tool.run({}, context)}
+    node.__name__ = f"{tool.name}_node"
+    return node
 
 
 def write_sql_node(state, runtime: Runtime[ChatContext]):
@@ -470,7 +453,8 @@ def build_graph():
     graph.add_node("input_guardrail", input_guardrail_node)
     graph.add_node("router", router_node)
     graph.add_node("documents", documents_node)
-    graph.add_node("github", github_node)
+    for tool in TOOLS:
+        graph.add_node(tool.name, as_graph_node(tool))
     graph.add_node("write_sql", write_sql_node)
     graph.add_node("run_sql", run_sql_node)
     graph.add_node("data_answer", data_answer_node)
@@ -485,7 +469,8 @@ def build_graph():
     )
     graph.add_conditional_edges(
         "router", lambda state: state["tool"],
-        {"documents": "documents", "github": "github",
+        {"documents": "documents",
+         **{tool.name: tool.name for tool in TOOLS},
          "nyc_data": "write_sql"},
     )
     # The web is searched only when the documents do not cover it.
@@ -494,7 +479,8 @@ def build_graph():
         {"search the web": "web_search", "done": END},
     )
     graph.add_edge("web_search", END)
-    graph.add_edge("github", END)
+    for tool in TOOLS:
+        graph.add_edge(tool.name, END)
     graph.add_edge("write_sql", "run_sql")
     # A SQL error loops back for one corrected attempt.
     graph.add_conditional_edges(
@@ -533,7 +519,7 @@ def respond(question, collection, history=None, client=None):
     Return the same dict as `rag.answer`, plus `tool`: the name of the
     tool that produced the answer.  A message that is only small talk
     has the status "small_talk".  A github answer also has
-    `commits`, the list the answer was drawn from, an nyc_data
+    `evidence`, the commits the answer was drawn from, an nyc_data
     answer has `query`, the SQL that ran and its result, and a web
     answer has `web_results`.  A tool that fails raises
     `tools.ToolFailure`, except the web search, whose failure is added

@@ -8,6 +8,7 @@ import pytest
 from assistant import chat
 from assistant import guard
 from assistant import tools
+from assistant.tools import nyc_data
 from assistant.tools.base import Evidence
 from fakes import FakeClient, FakeEmbedding, prompt_text
 from assistant.store import add_documents, get_collection
@@ -152,7 +153,7 @@ QUERY = {"sql": "SELECT SUM(drivers) AS total FROM driver_licenses",
 
 def test_write_sql_removes_a_code_fence():
     client = FakeClient("```sql\nSELECT 1\n```")
-    assert chat.write_sql("How many?", client=client) == "SELECT 1"
+    assert nyc_data.write_sql("How many?", client=client) == "SELECT 1"
     sent = prompt_text(client.received)
     assert "Table driver_licenses" in sent
     assert sent.endswith("Question: How many?")
@@ -160,8 +161,8 @@ def test_write_sql_removes_a_code_fence():
 
 def test_write_sql_shows_the_model_its_failed_attempt():
     client = FakeClient("SELECT 1")
-    chat.write_sql("How many?", "SELECT nope", "no such column: nope",
-                   client=client)
+    nyc_data.write_sql("How many?", "SELECT nope", "no such column: nope",
+                       client=client)
     sent = prompt_text(client.received)
     assert "SELECT nope" in sent
     assert "no such column: nope" in sent
@@ -184,7 +185,7 @@ def test_respond_answers_from_the_license_data(collection, monkeypatch):
 
     assert result["tool"] == "nyc_data"
     assert result["answer"] == "There are 180648 active drivers."
-    assert result["query"] == QUERY
+    assert result["evidence"] == Evidence("query", [QUERY])
     assert ran == ["SELECT SUM(drivers) AS total FROM driver_licenses"]
     final_prompt = prompt_text(client.calls[2])
     assert "total\n180648" in final_prompt
@@ -233,7 +234,7 @@ def test_respond_retries_once_when_the_result_is_empty(
 
     result = chat.respond("how many drivers?", collection, client=client)
 
-    assert result["query"] == QUERY
+    assert result["evidence"] == Evidence("query", [QUERY])
     retry_prompt = prompt_text(client.calls[2])
     assert "returned no data" in retry_prompt
 
@@ -251,7 +252,7 @@ def test_respond_reports_an_empty_result_after_the_retry(
     result = chat.respond("how many in 1999?", collection, client=client)
 
     assert result["answer"] == "The data has no matching rows."
-    assert result["query"] == empty
+    assert result["evidence"] == Evidence("query", [empty])
 
 
 def test_respond_gives_up_after_two_failed_queries(collection, monkeypatch):

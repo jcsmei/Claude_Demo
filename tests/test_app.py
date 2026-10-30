@@ -183,7 +183,8 @@ def test_data_answer_shows_its_source_sql_and_rows(app, monkeypatch):
         return {"answer": "There are 180648 drivers.", "status": "answered",
                 "answered": True, "tool": "nyc_data",
                 "sources": ["NYC Open Data"], "passages": [],
-                "query": query, "search_query": question}
+                "evidence": Evidence("query", [query]),
+                "search_query": question}
     monkeypatch.setattr(chat, "respond", data_answer)
 
     ask(log_in(app), "How many drivers are there?")

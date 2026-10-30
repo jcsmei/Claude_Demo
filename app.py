@@ -61,8 +61,6 @@ coding assistant.
 SOURCE_LABELS = {
     "documents": "Source: the project's documents",
     **{tool.name: tool.source_label for tool in TOOLS},
-    "nyc_data": ("Source: NYC Open Data, live counts of active "
-                 "medallion taxi driver licenses"),
     "web": ("Source: a web search through Tavily's MCP server, not "
             "the project's official documents"),
 }
@@ -225,7 +223,6 @@ def answer_question(question, history):
     return {"role": "assistant", "content": content,
             "passages": result["passages"],
             "evidence": result.get("evidence"),
-            "query": result.get("query"),
             "web_results": result.get("web_results"),
             "status": result["status"], "tool": result["tool"],
             "rewritten": rewritten, "notice": notice}
@@ -247,8 +244,14 @@ def show_commits(commits):
             )
 
 
-def show_query(query):
+def show_queries(queries):
     """Show the SQL a data answer ran and the rows it returned."""
+    for query in queries:
+        show_query(query)
+
+
+def show_query(query):
+    """Show one query and the rows it returned."""
     with st.expander(f"Query run on NYC Open Data ({len(query['rows'])} "
                      "rows returned)"):
         st.caption(
@@ -287,6 +290,7 @@ def show_web_results(results):
 # drawing it is the page's job.
 EVIDENCE_RENDERERS = {
     "commits": show_commits,
+    "query": show_queries,
 }
 
 
@@ -310,9 +314,6 @@ def show_message(message):
         evidence = message.get("evidence")
         if evidence:
             EVIDENCE_RENDERERS[evidence.kind](evidence.items)
-            return
-        if message.get("query"):
-            show_query(message["query"])
             return
         if message.get("web_results"):
             show_web_results(message["web_results"])

@@ -1,13 +1,22 @@
 """Tests for the tool interface and the tools that follow it."""
 
 from assistant import chat
-from assistant.tools.base import Evidence, Tool
+from assistant.tools.base import Evidence, GraphTool, Tool, ToolInfo
 
 
 def test_every_registered_tool_follows_the_interface():
     for tool in chat.TOOLS:
-        assert isinstance(tool, Tool)
+        assert isinstance(tool, ToolInfo)
+        assert isinstance(tool, (Tool, GraphTool))
         assert tool.name and tool.description and tool.source_label
+
+
+def test_a_tool_with_its_own_steps_starts_where_the_router_sends_it():
+    diagram = chat.flow_diagram()
+    for tool in chat.TOOLS:
+        if isinstance(tool, GraphTool):
+            assert f'"router" -> "{tool.name}"' not in diagram
+    assert '"router" -> "write_sql" [style=dashed];' in diagram
 
 
 def test_tool_names_are_unique():

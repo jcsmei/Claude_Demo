@@ -56,8 +56,10 @@ along the way.
 
 ```mermaid
 flowchart LR
-    message --> input_guardrail
-    input_guardrail -.->|refused or small talk| answer
+    message --> small_talk
+    small_talk -.->|small talk| answer
+    small_talk -.-> input_guardrail
+    input_guardrail -.->|refused| answer
     input_guardrail -.-> router
     router -.-> documents
     documents -.->|not covered| web_search
@@ -79,13 +81,13 @@ diagram from the graph itself.
 
 | File | Role |
 |---|---|
-| `assistant/` | The assistant itself, as a Python package. The six files below are inside it, along with `guard.py`, which screens messages for prompt injection. |
+| `assistant/` | The assistant itself, as a Python package. The files below, down to `chat.py`, are inside it, along with `guard.py`, which screens messages for prompt injection. |
 | `llm.py` | Sends a question to a Groq model and returns the reply. |
 | `store.py` | Chunks documents, stores them in Chroma, searches them. |
 | `rag.py` | Retrieves chunks, then asks the model to answer from them. |
-| `tools.py` | Fetches live information from outside: the project's commits on GitHub, taxi driver license counts from NYC Open Data, and web results. |
-| `mcp_client.py` | The MCP client: connects to Tavily's MCP server and calls its search tool for `tools.py`. |
-| `chat.py` | The orchestration: a LangGraph graph that routes each message to a tool, then answers with it. |
+| `tools/` | One file per tool, each following the interface in `tools/base.py`: `documents.py` (answers from the documents, with a web fallback), `github.py` (recent commits), `nyc_data.py` (taxi driver license counts, through SQL) and `web.py` (web search, used only as the documents' fallback). Shared code that fetches live data is in `tools/__init__.py`. |
+| `mcp_client.py` | The MCP client: connects to Tavily's MCP server and calls its search tool for web search. |
+| `chat.py` | The orchestration: a LangGraph graph that replies to small talk, screens each message, routes it to a tool, then answers with it. The tools are read from one list, so adding a tool is one file. |
 | `mcp_server.py` | Exposes the search, ask, commit and data query tools to MCP clients, with logging. |
 | `app.py` | A password-protected Streamlit chat page that shows each answer with its source and the evidence behind it. |
 | `data/` | The knowledge base: the documents the assistant answers from, written as questions and answers. |

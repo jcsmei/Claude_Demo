@@ -108,7 +108,7 @@ CASES = [
     ("What is LangGraph?", "flowchart on a whiteboard"),
     ("How does this bot use LangGraph?", "LangGraph for orchestration"),
     ("What are nodes and edges?", "A node is one step"),
-    ("What steps are in the graph?", "graph has eight nodes"),
+    ("What steps are in the graph?", "graph has nine nodes"),
     ("What is the retry loop?", "handles a failed database query"),
     ("What is state in LangGraph?", "shared notebook"),
     ("How do RAG, MCP and LangGraph fit together in this project?",
@@ -145,7 +145,7 @@ CASES = [
     ("What is the difference between the knowledge base and the "
      "vector store?", "index is derived from it"),
     ("What is the ingestion pipeline?", "in three steps"),
-    ("Which file does what?", "nine code files"),
+    ("Which file does what?", "Each code file has one job"),
     ("What are the guardrails?", "rules enforced by code"),
     ("How many model calls does an answer take?",
      "one small screening call"),

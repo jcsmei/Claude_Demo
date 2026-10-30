@@ -62,13 +62,13 @@ from a web search, and the bot says so.
 
 ## What are the parts of this project?
 
-The project has seven main code files. llm.py sends a question to the
-language model. store.py splits documents into chunks, stores them in
-Chroma and searches them. rag.py joins the two: it retrieves chunks
-and asks the model to answer from them. tools.py fetches live
-information from outside, such as GitHub. chat.py chooses which tool
-fits each message. mcp_server.py offers the tools to AI assistants.
-app.py is the chat page.
+The main parts are these. llm.py sends a question to the language
+model. store.py splits documents into chunks, stores them in Chroma
+and searches them. rag.py joins the two: it retrieves chunks and asks
+the model to answer from them. The tools folder holds one file per
+tool, each fetching information from one source, such as GitHub.
+chat.py chooses which tool fits each message. mcp_server.py offers
+the tools to AI assistants. app.py is the chat page.
 
 ## Tell me about the model being used
 

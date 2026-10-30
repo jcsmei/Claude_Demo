@@ -69,16 +69,15 @@ changes.
 
 ## What are the main components, and which file is each one in?
 
-There are nine code files, each with one job. app.py is the chat
-page. chat.py is the LangGraph orchestration. rag.py holds the
-prompts and the answering logic. store.py does chunking, storage and
-retrieval. tools.py fetches live data from GitHub, NYC Open Data and
-the web. mcp_client.py is the MCP client that calls Tavily's MCP
-server for web search. llm.py makes the model calls and handles the
-fallback. guard.py screens messages for prompt injection.
-mcp_server.py is the MCP server. app.py and mcp_server.py sit at the
-top of the project; the other seven are in a package folder named
-assistant.
+Each code file has one job. app.py is the chat page and mcp_server.py
+is the MCP server; both sit at the top of the project. Everything else
+is in a package folder named assistant. chat.py is the LangGraph
+orchestration. rag.py holds the prompts and the answering logic.
+store.py does chunking, storage and retrieval. llm.py makes the model
+calls and handles the fallback. guard.py screens messages for prompt
+injection. mcp_client.py is the MCP client that calls Tavily's MCP
+server. The tools folder has one file per tool: documents, github,
+nyc_data and web, plus base.py, the interface they all follow.
 
 ## What engineering terms describe the parts of this system?
 

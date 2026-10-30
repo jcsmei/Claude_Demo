@@ -147,7 +147,7 @@ runs saved in `evals/runs/`. Do not edit it by hand.
 
 ## Retrieval quality
 
-Measured on 2026-10-13 with the retrieval benchmark: 125 real questions,
+Measured on 2026-10-30 with the retrieval benchmark: 125 real questions,
 each paired with the passage that answers it, searched across 164 chunks.
 This uses the real embedding model and no language model, so it costs no tokens.
 
@@ -184,6 +184,7 @@ Questions whose passage ranked below third:
 |---|---|---|---|---|---|---|
 | 2026-10-11 | 125 | 164 | 76% | 94% | 100% | 0.85 |
 | 2026-10-13 | 125 | 164 | 76% | 94% | 100% | 0.85 |
+| 2026-10-30 | 125 | 164 | 76% | 94% | 100% | 0.85 |
 
 ## Model run log
 

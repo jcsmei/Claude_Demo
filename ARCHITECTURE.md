@@ -75,13 +75,13 @@ flowchart TB
     visitor([Visitor]) --> app[Chat page<br/>Streamlit]
     assistant([AI assistant<br/>such as Claude Code]) --> server[MCP server<br/>rag-demo, 4 tools]
 
-    app --> flow[Orchestration<br/>LangGraph, 8 nodes]
+    app --> flow[Orchestration<br/>LangGraph, 9 nodes]
     flow --> core
     server --> core
 
     subgraph core [Shared core]
         rag[RAG<br/>rag.py, store.py]
-        tools[Live tools<br/>tools.py]
+        tools[Tools<br/>tools/, one file each]
         llm[Model calls<br/>llm.py, guard.py]
     end
 
@@ -111,8 +111,10 @@ retrieval, tools and model code.
 
 ```mermaid
 flowchart LR
-    message --> input_guardrail
-    input_guardrail -.->|refused or small talk| answer
+    message --> small_talk
+    small_talk -.->|small talk| answer
+    small_talk -.-> input_guardrail
+    input_guardrail -.->|refused| answer
     input_guardrail -.-> router
     router -.-> documents
     documents -.->|not covered| web_search
@@ -129,20 +131,21 @@ flowchart LR
 
 Dashed arrows are decisions. In order:
 
-1. **Input guardrail.** The message is refused if it is longer than 1,000
-   characters or if a classifier scores it as a likely prompt
-   injection. A message that is only small talk, such as "thanks" or
-   "hi", is matched against a short fixed list and given a fixed
-   reply here, before any model is called. It does not count against
+1. **Small talk.** A message that is only small talk, such as
+   "thanks" or "hi", is matched against a short fixed list and given a
+   fixed reply, before any model is called. It does not count against
    the question limit.
-2. **Route.** One model call picks a source (documents,
+2. **Input guardrail.** The message is refused if it is longer than
+   1,000 characters or if a classifier scores it as a likely prompt
+   injection.
+3. **Route.** One model call picks a source (documents,
    GitHub or NYC data) and, if the message is a follow-up, rewrites it
    as a standalone question.
-3. **Fetch.** The chosen tool gets its information: passages from
+4. **Fetch.** The chosen tool gets its information: passages from
    Chroma, commits from GitHub, or rows from a SQL query.
-4. **Fall back to the web** only if the documents did not cover the
+5. **Fall back to the web** only if the documents did not cover the
    question and the privacy rules allow a search.
-5. **Answer.** A model call writes the answer from what was fetched,
+6. **Answer.** A model call writes the answer from what was fetched,
    and from nothing else.
 6. **Show the evidence.** The page displays the source and the
    material the answer was drawn from.
@@ -202,7 +205,8 @@ project's own functions.
 
 | Node | Job | Model calls |
 |---|---|---|
-| `input_guardrail` | Refuse a message that is too long or looks like an injection; reply to small talk | 1 classifier, or none for small talk |
+| `small_talk` | Reply to small talk from a fixed list | 0 |
+| `input_guardrail` | Refuse a message that is too long or looks like an injection | 1 classifier |
 | `router` | Pick a source and make the question standalone | 1 |
 | `documents` | Answer from retrieved passages | 1 |
 | `web_search` | Answer from web results | 1 |
@@ -215,7 +219,8 @@ project's own functions.
 
 | After | Goes to | When |
 |---|---|---|
-| `input_guardrail` | end, or `router` | The message was refused or was small talk, or not |
+| `small_talk` | end, or `input_guardrail` | The message was small talk, or not |
+| `input_guardrail` | end, or `router` | The message was refused, or not |
 | `router` | `documents`, `github` or `write_sql` | By the tool the model named |
 | `documents` | `web_search`, or end | Not covered and a web search is allowed, or otherwise |
 | `run_sql` | `write_sql`, or `data_answer` | The query failed or was empty and has not been retried, or otherwise |
@@ -225,6 +230,15 @@ conversation, the chosen tool, the standalone question, the SQL with
 its error and attempt count, the query result, and the final answer.
 The search collection and the model client are passed as run-time
 context, not state, because nodes read them but never change them.
+
+**Tools.** Each tool is one file in `assistant/tools/`, following the
+interface in `tools/base.py`: a name, the description the router
+reads, an argument schema, a source label, and its evidence returned
+as plain data. A tool that answers in one step provides `run()`, and
+the graph wraps it as a node. A tool with several steps, such as the
+documents tool with its web fallback or the NYC data tool with its
+SQL retry, adds its own nodes. `chat.py` builds the router's list,
+the nodes and the routes from one list of tools, `TOOLS`.
 
 **Routing.** The model is given a one-line description of each
 tool and replies in a fixed two-line format: the tool's name and the
@@ -568,7 +582,7 @@ from the repository.
 
 ## 14. Testing and continuous integration
 
-There are 333 automated tests, run with pytest.
+There are 338 automated tests, run with pytest.
 
 | File | Test cases | Covers |
 |---|---|---|
@@ -581,6 +595,7 @@ There are 333 automated tests, run with pytest.
 | `test_store.py` | 11 | Chunking, storage, search |
 | `test_guard.py` | 9 | The input guardrail's classifier and its failure behaviour |
 | `test_evals.py` | 19 | The evaluation's scoring rules, retrieval metrics and report |
+| `test_tools_base.py` | 5 | The tool interface, and that every tool follows it |
 | `test_retrieval.py` | 125 | The retrieval benchmark |
 
 **Fakes.** The models, the embedding model, GitHub, NYC Open Data and
@@ -626,14 +641,20 @@ Claude_Demo/
 │   ├── chat.py         LangGraph orchestration
 │   ├── rag.py          prompts, retrieval, answering
 │   ├── store.py        chunking, Chroma storage, search
-│   ├── tools.py        GitHub, NYC data, web search
+│   ├── tools/          one file per tool
+│   │   ├── base.py         the tool interface
+│   │   ├── documents.py    documents, with the web fallback
+│   │   ├── github.py       recent commits
+│   │   ├── nyc_data.py     taxi license counts, through SQL
+│   │   ├── web.py          web search and its privacy rules
+│   │   └── __init__.py     shared code that fetches live data
 │   ├── mcp_client.py   MCP client of Tavily's server
 │   ├── llm.py          model calls and fallback
 │   └── guard.py        input guardrail: injection classifier
 ├── data/               the knowledge base: 10 documents
-├── docs/               the design for version 2
+├── docs/               design snapshots, decision records, diagrams
 ├── evals/              model and retrieval evaluation: scripts, run logs, report
-├── tests/              333 tests and shared fakes
+├── tests/              338 tests and shared fakes
 ├── .github/workflows/  continuous integration
 ├── .mcp.json           registers the MCP server with Claude Code
 ├── .env.example        template for settings
@@ -688,11 +709,11 @@ The files named in the last column are in `assistant/`.
 | Text sent to the classifier | first 1,500 characters | `guard.py` |
 | Longest message accepted | 1,000 characters | `chat.py` |
 | SQL attempts | 2 | `chat.py` |
-| SQL rows returned | 50 | `tools.py` |
-| SQL step limit | 1,000,000 | `tools.py` |
+| SQL rows returned | 50 | `tools/__init__.py` |
+| SQL step limit | 1,000,000 | `tools/__init__.py` |
 | Commits shown to the model | 10 | `chat.py` |
-| GitHub results reused | 10 minutes | `tools.py` |
-| NYC data reused | 6 hours | `tools.py` |
-| Web results | 3, each cut to 500 characters | `mcp_client.py`, `tools.py` |
-| Outside request timeout | 15 seconds | `tools.py`, `mcp_client.py` |
+| GitHub results reused | 10 minutes | `tools/__init__.py` |
+| NYC data reused | 6 hours | `tools/__init__.py` |
+| Web results | 3, each cut to 500 characters | `mcp_client.py`, `tools/__init__.py` |
+| Outside request timeout | 15 seconds | `tools/__init__.py`, `mcp_client.py` |
 | Questions per visit | 20 | `app.py` |

@@ -37,8 +37,9 @@ just happened. The whole flowchart is called a graph.
 
 ## What are the steps in this bot's graph?
 
-This bot's graph has eight nodes. input_guardrail refuses a message
-that is too long or looks like a prompt injection. router decides
+This bot's graph has nine nodes. small_talk replies to a message
+such as "thanks" without calling a model. input_guardrail refuses a
+message that is too long or looks like a prompt injection. router decides
 which source fits the message. documents answers from the project's
 documents. web_search answers from the web when the documents do not
 cover the question. github answers from the project's recent code
@@ -47,12 +48,14 @@ runs it, and data_answer explains the result.
 
 ## Where does the graph make decisions?
 
-The graph makes four decisions, each a conditional edge. After
-input_guardrail, a refused message ends the flow and any other goes
-on. After router, it goes to the documents, to GitHub or to the taxi data.
-After documents, it goes to a web search only if the documents did not
-cover the question and a web search is allowed. After run_sql, it goes
-back to write_sql once if the query failed or returned nothing.
+The graph makes five decisions, each a conditional edge. After
+small_talk, small talk ends the flow and any other message goes on.
+After input_guardrail, a refused message ends the flow and any other
+goes on. After router, it goes to the documents, to GitHub or to the
+taxi data. After documents, it goes to a web search only if the
+documents did not cover the question and a web search is allowed.
+After run_sql, it goes back to write_sql once if the query failed or
+returned nothing.
 
 ## What is the retry loop in the graph?
 

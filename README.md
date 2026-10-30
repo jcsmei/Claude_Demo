@@ -278,9 +278,10 @@ drawn in SAP's diagram conventions.
 For the full technical specification, from the orchestration down to
 the parameters in the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
 For what is planned next, see the
-[version 2 design](docs/design_v2.md): the architecture, decisions,
-risks, build order and estimate. It is a draft, and none of it is
-built yet.
+[design documents](docs/design/): dated snapshots of each design,
+starting with version 2's architecture, risks, build order and
+estimate. The reason behind each significant decision is in the
+[architecture decision records](docs/adr/).
 
 Six of the documents are worth reading directly:
 

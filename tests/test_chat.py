@@ -432,7 +432,9 @@ def test_flow_diagram_shows_the_sql_retry_loop():
 
 def test_flow_diagram_shows_the_choice_between_tools():
     diagram = chat.flow_diagram()
-    assert '"message" -> "input_guardrail";' in diagram
+    assert '"message" -> "small_talk";' in diagram
+    assert '"small_talk" -> "answer" [style=dashed];' in diagram
+    assert '"small_talk" -> "input_guardrail" [style=dashed];' in diagram
     assert '"input_guardrail" -> "router" [style=dashed];' in diagram
     assert '"input_guardrail" -> "answer" [style=dashed];' in diagram
     assert '"router" -> "documents" [style=dashed];' in diagram

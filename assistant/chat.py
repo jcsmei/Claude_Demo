@@ -163,19 +163,28 @@ def small_talk(question, reply):
             "search_query": question}
 
 
-def input_guardrail_node(state, runtime: Runtime[ChatContext]):
-    """Settle a message that needs no answer from a source.
+def small_talk_node(state, runtime: Runtime[ChatContext]):
+    """Reply to small talk such as "thanks" with its fixed reply.
 
-    A message that is too long is refused, small talk such as "thanks"
-    gets its fixed reply, and a message that looks like an injection
-    is refused.  The first two cost no model call.
+    It runs first and calls no model.  It only matches short, fixed
+    phrases, so a long or hostile message always goes on to the input
+    guardrail.
+    """
+    reply = small_talk_reply(state["question"])
+    if reply:
+        return {"result": small_talk(state["question"], reply)}
+    return {}
+
+
+def input_guardrail_node(state, runtime: Runtime[ChatContext]):
+    """Refuse a message that is too long or looks like an injection.
+
+    The length check costs nothing; the injection check calls the
+    classifier model.
     """
     question = state["question"]
     if len(question) > MAX_QUESTION_CHARS:
         return {"result": blocked(question, TOO_LONG_MESSAGE)}
-    reply = small_talk_reply(question)
-    if reply:
-        return {"result": small_talk(question, reply)}
     if guard.looks_like_injection(question,
                                   client=runtime.context["client"]):
         return {"result": blocked(question, BLOCKED_MESSAGE)}
@@ -206,8 +215,10 @@ def as_graph_node(tool):
 
 
 def build_graph():
-    """Return the compiled graph: input guardrail, router, tool nodes."""
+    """Return the compiled graph: small talk, input guardrail, router,
+    then the tools' nodes."""
     graph = StateGraph(ChatState, context_schema=ChatContext)
+    graph.add_node("small_talk", small_talk_node)
     graph.add_node("input_guardrail", input_guardrail_node)
     graph.add_node("router", router_node)
     # Each tool's first node, which the router sends the message to.
@@ -219,9 +230,14 @@ def build_graph():
             graph.add_node(tool.name, as_graph_node(tool))
             graph.add_edge(tool.name, END)
             entries[tool.name] = tool.name
-    graph.add_edge(START, "input_guardrail")
-    # A message that was refused, or was only small talk, goes no
-    # further.
+    graph.add_edge(START, "small_talk")
+    # Small talk has its reply and goes no further.
+    graph.add_conditional_edges(
+        "small_talk",
+        lambda state: "replied" if state.get("result") else "continue",
+        {"replied": END, "continue": "input_guardrail"},
+    )
+    # A message that was refused goes no further.
     graph.add_conditional_edges(
         "input_guardrail",
         lambda state: "refuse" if state.get("result") else "continue",

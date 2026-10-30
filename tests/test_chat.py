@@ -9,6 +9,7 @@ from assistant import chat
 from assistant import guard
 from assistant import tools
 from assistant.tools import nyc_data
+from assistant.tools import web
 from assistant.tools.base import Evidence
 from fakes import FakeClient, FakeEmbedding, prompt_text
 from assistant.store import add_documents, get_collection
@@ -299,9 +300,9 @@ def test_respond_searches_the_web_when_documents_do_not_cover_it(
     assert result["tool"] == "web"
     assert result["status"] == "answered"
     assert result["answer"] == (
-        f"{chat.WEB_NOTICE}\n\nA medallion is a permit."
+        f"{web.WEB_NOTICE}\n\nA medallion is a permit."
     )
-    assert result["web_results"] == WEB_RESULTS
+    assert result["evidence"] == Evidence("web_results", WEB_RESULTS)
     assert result["sources"] == ["https://example.com/medallion"]
     sent = prompt_text(client.calls[2])
     assert "Taxi medallion (https://example.com/medallion)" in sent
@@ -361,7 +362,7 @@ def test_respond_says_when_the_web_has_no_answer_either(
 
     assert result["tool"] == "web"
     assert result["status"] == "not_covered"
-    assert result["answer"] == chat.WEB_NOT_FOUND_MESSAGE
+    assert result["answer"] == web.WEB_NOT_FOUND_MESSAGE
     assert result["sources"] == []
 
 
@@ -390,14 +391,14 @@ def test_respond_keeps_the_refusal_when_the_web_search_fails(
 def test_ordinary_questions_may_be_searched_on_the_web(
         monkeypatch, question):
     monkeypatch.setattr(tools, "web_search_available", lambda: True)
-    assert chat.web_search_allowed(question)
+    assert web.web_search_allowed(question)
 
 
 def test_web_prompt_forbids_claims_about_the_project(monkeypatch):
     enable_web_search(monkeypatch)
     client = FakeClient("A medallion is a permit.")
 
-    chat.answer_from_web("what are medallions?", "what are medallions?",
+    web.answer_from_web("what are medallions?", "what are medallions?",
                          client=client)
 
     sent = prompt_text(client.received)
@@ -405,8 +406,8 @@ def test_web_prompt_forbids_claims_about_the_project(monkeypatch):
 
 
 def test_web_notice_says_the_answer_is_not_from_the_documents():
-    assert "not from the official documents" in chat.WEB_NOTICE
-    assert "not been verified" in chat.WEB_NOTICE
+    assert "not from the official documents" in web.WEB_NOTICE
+    assert "not been verified" in web.WEB_NOTICE
 
 
 def test_flow_diagram_shows_the_web_search_fallback():
@@ -497,7 +498,7 @@ def test_web_pages_travel_as_data_not_instructions(monkeypatch):
     enable_web_search(monkeypatch, search=lambda query: hostile)
     client = FakeClient("A medallion is a permit.")
 
-    chat.answer_from_web("what are medallions?", "what are medallions?",
+    web.answer_from_web("what are medallions?", "what are medallions?",
                          client=client)
 
     system, user = client.received["messages"]

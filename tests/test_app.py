@@ -18,6 +18,7 @@ from assistant import chat
 from assistant import rag
 from assistant import store
 from assistant import tools
+from assistant.tools import web
 from assistant.tools.base import Evidence
 from fakes import FakeEmbedding
 
@@ -209,10 +210,11 @@ def test_web_answer_shows_its_source_and_results(app, monkeypatch):
                 "url": "https://example.com/medallion"}]
 
     def web_answer(question, collection, history=None):
-        return {"answer": f"{chat.WEB_NOTICE}\n\nA medallion is a permit.",
+        return {"answer": f"{web.WEB_NOTICE}\n\nA medallion is a permit.",
                 "status": "answered", "answered": True, "tool": "web",
                 "sources": ["https://example.com/medallion"],
-                "passages": [], "web_results": results,
+                "passages": [],
+                "evidence": Evidence("web_results", results),
                 "search_query": question}
     monkeypatch.setattr(chat, "respond", web_answer)
 
@@ -221,7 +223,7 @@ def test_web_answer_shows_its_source_and_results(app, monkeypatch):
     assert not app.exception
     reply = app.chat_message[1]
     # The notice is a highlighted box, and is not repeated in the answer.
-    assert reply.warning[0].value == chat.WEB_NOTICE
+    assert reply.warning[0].value == web.WEB_NOTICE
     assert reply.markdown[0].value == "A medallion is a permit."
     captions = " ".join(caption.value for caption in reply.caption)
     assert ("Source: a web search through Tavily's MCP server, not the "

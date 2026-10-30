@@ -15,9 +15,10 @@ import groq
 import streamlit as st
 from dotenv import load_dotenv
 
-from assistant.chat import TOOLS, WEB_NOTICE, flow_diagram, respond
+from assistant.chat import TOOLS, flow_diagram, respond
 from assistant.rag import DATA_FOLDER
 from assistant.tools import ToolFailure
+from assistant.tools import web
 from assistant.store import DOCUMENT_SUFFIXES, add_documents, get_collection
 
 load_dotenv()
@@ -59,10 +60,8 @@ coding assistant.
 """
 # Shown under each answer, so the viewer knows where it came from.
 SOURCE_LABELS = {
-    "documents": "Source: the project's documents",
     **{tool.name: tool.source_label for tool in TOOLS},
-    "web": ("Source: a web search through Tavily's MCP server, not "
-            "the project's official documents"),
+    web.NAME: web.SOURCE_LABEL,
 }
 # Values that must never appear on the page, even inside an error.
 SECRET_SETTINGS = ("GROQ_API_KEY", "APP_PASSWORD")
@@ -214,8 +213,9 @@ def answer_question(question, history):
     # A web answer's notice is shown as a highlighted box, not as part
     # of the answer text.
     notice = None
-    if result["tool"] == "web" and content.startswith(WEB_NOTICE):
-        notice, content = WEB_NOTICE, content[len(WEB_NOTICE):].strip()
+    if result["tool"] == web.NAME and content.startswith(web.WEB_NOTICE):
+        notice = web.WEB_NOTICE
+        content = content[len(web.WEB_NOTICE):].strip()
     # Kept only when a follow-up was rewritten for the search.
     rewritten = result["search_query"]
     if rewritten == question:
@@ -223,7 +223,6 @@ def answer_question(question, history):
     return {"role": "assistant", "content": content,
             "passages": result["passages"],
             "evidence": result.get("evidence"),
-            "web_results": result.get("web_results"),
             "status": result["status"], "tool": result["tool"],
             "rewritten": rewritten, "notice": notice}
 
@@ -291,6 +290,7 @@ def show_web_results(results):
 EVIDENCE_RENDERERS = {
     "commits": show_commits,
     "query": show_queries,
+    "web_results": show_web_results,
 }
 
 
@@ -314,9 +314,6 @@ def show_message(message):
         evidence = message.get("evidence")
         if evidence:
             EVIDENCE_RENDERERS[evidence.kind](evidence.items)
-            return
-        if message.get("web_results"):
-            show_web_results(message["web_results"])
             return
         passages = message.get("passages")
         # An unclear message has no answer to trace back to passages.

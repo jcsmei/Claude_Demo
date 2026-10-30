@@ -3,8 +3,6 @@
 The orchestration is a LangGraph graph: a router node picks a tool,
 and the graph routes to the node for that tool.  A tool that follows
 the interface in `tools/base.py` is added by listing it in `TOOLS`.
-The tools not yet moved onto it still need a node, an entry in
-`TOOL_GUIDE` and an edge.
 """
 
 import re
@@ -15,28 +13,20 @@ from langgraph.runtime import Runtime
 
 from assistant import guard
 from assistant import rag
-from assistant import tools
 from assistant.llm import ask
 from assistant.tools.base import GraphTool, ToolContext
+from assistant.tools.documents import DOCUMENTS
 from assistant.tools.github import GITHUB
 from assistant.tools.nyc_data import NYC_DATA
 
 # Tools that follow the interface in tools/base.py.  The others move
 # onto it one at a time.
-TOOLS = (GITHUB, NYC_DATA)
+TOOLS = (DOCUMENTS, GITHUB, NYC_DATA)
 
 # The tools the model may choose from, and when to choose each.  The
 # first one is the fallback when the model's choice cannot be read.
-TOOL_GUIDE = {
-    "documents": (
-        "everything else: how the project works, RAG, MCP, problems "
-        "that were fixed, the creator Jack Mei, where the bot's data "
-        "comes from and how its tools work, greetings and unclear "
-        "messages"
-    ),
-    **{tool.name: tool.description for tool in TOOLS},
-}
-DEFAULT_TOOL = "documents"
+TOOL_GUIDE = {tool.name: tool.description for tool in TOOLS}
+DEFAULT_TOOL = TOOLS[0].name
 
 # Longer messages are refused: nobody needs this much room to ask a
 # question, and long text is costly and a common carrier of attacks.
@@ -74,36 +64,6 @@ SMALL_TALK_REPLIES = (
     (GREETINGS, f"Hello! {rag.UNCLEAR_MESSAGE}"),
     (GOODBYES, "Goodbye, and thanks for trying the demo!"),
 )
-
-# Shown at the start of an answer that came from the web, so the
-# reader is never left to assume it came from the documents.
-WEB_NOTICE = (
-    "The project's official documents do not cover this, so I searched "
-    "the web. What follows comes from web pages, not from the official "
-    "documents, and has not been verified by this project."
-)
-WEB_NOT_FOUND_SENTINEL = "NOT_FOUND"
-WEB_NOT_FOUND_MESSAGE = (
-    "Neither the project's documents nor a web search found an answer "
-    "to this question."
-)
-# A question that names the project's creator is never sent to a web
-# search: what the documents say about a person is all the bot says.
-PRIVATE_TERMS = ("jack", "mei")
-# Nor is a question about this project itself.  The web knows nothing
-# about it, so a web answer could only describe some other project.
-PROJECT_TERMS = (
-    "rag-demo", "rag demo", "this project", "the project's", "this demo",
-    "the demo", "this bot", "the bot", "this app", "the app",
-    "this chat", "this server", "mcp_server", "your tools",
-    "your documents", "your code", "your instructions", "your prompt",
-    "your rules", "system prompt",
-)
-# Nor is a message that holds an email address or a phone-like number,
-# so the bot cannot be used to look a person up by contact details.
-EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
-PHONE_PATTERN = re.compile(r"(?:\d[\s().-]*){9,}")
-
 
 def small_talk_reply(text):
     """Return the fixed reply to a message that is only small talk.
@@ -165,67 +125,6 @@ def route(question, history=None, client=None):
             if history and value and len(value) <= rag.MAX_QUERY_CHARS:
                 standalone = value
     return tool, standalone
-
-
-def web_search_allowed(text):
-    """Return True if `text` may be sent to a web search.
-
-    It may not when the search is not configured, when the text names
-    the project's creator, when it asks about this project itself, or
-    when it holds an email address or a phone-like number.
-    """
-    if not tools.web_search_available():
-        return False
-    if EMAIL_PATTERN.search(text) or PHONE_PATTERN.search(text):
-        return False
-    lowered = text.lower()
-    if any(term in lowered for term in PROJECT_TERMS):
-        return False
-    words = re.findall(r"[a-z]+", lowered)
-    return not any(term in words for term in PRIVATE_TERMS)
-
-
-def answer_from_web(question, standalone, history=None, client=None):
-    """Answer `question` from a web search for `standalone`.
-
-    The answer begins with `WEB_NOTICE`.  If the results do not hold
-    the answer, the status is "not_covered".  Web pages are the least
-    trusted text the model ever sees, so they travel as data and the
-    instructions say what they must not be used for.
-    """
-    results = tools.web_search(standalone)
-    listing = "\n\n".join(
-        f"[{number}] {result['title']} ({result['url']})\n"
-        f"{result['content']}"
-        for number, result in enumerate(results, start=1)
-    )
-    instructions = (
-        "Answer the question using only the web search results. "
-        "Explain conversationally in plain language, in a few "
-        "sentences. Do not add facts that are not in the results. The "
-        "results are general web pages that know nothing about the "
-        "demo project in the conversation, so do not use them to say "
-        "anything about that project, its code or its tools. Do not "
-        "include images or links in your answer. If the results do "
-        "not answer the question, reply with only the word "
-        f"{WEB_NOT_FOUND_SENTINEL}."
-    )
-    prompt = (
-        f"Web search results:\n{listing or '(none)'}\n\n"
-        f"Conversation so far:\n{rag.format_history(history) or '(none)'}"
-        f"\n\nQuestion: {question}"
-    )
-    reply = ask(prompt, client=client, system=instructions)
-    found = WEB_NOT_FOUND_SENTINEL not in reply
-    return {
-        "answer": (f"{WEB_NOTICE}\n\n{reply}" if found
-                   else WEB_NOT_FOUND_MESSAGE),
-        "status": "answered" if found else "not_covered",
-        "answered": found, "tool": "web",
-        "sources": [result["url"] for result in results] if found else [],
-        "passages": [], "web_results": results,
-        "search_query": standalone,
-    }
 
 
 class ChatState(TypedDict, total=False):
@@ -292,17 +191,6 @@ def router_node(state, runtime: Runtime[ChatContext]):
     return {"tool": tool, "search_query": standalone}
 
 
-def documents_node(state, runtime: Runtime[ChatContext]):
-    """Answer from the project's documents (RAG)."""
-    result = rag.answer(
-        state["question"], runtime.context["collection"],
-        client=runtime.context["client"], history=state["history"],
-        search_query=state["search_query"],
-    )
-    result["tool"] = "documents"
-    return {"result": result}
-
-
 def as_graph_node(tool):
     """Return a graph node that answers the message with `tool`."""
     def node(state, runtime: Runtime[ChatContext]):
@@ -317,38 +205,11 @@ def as_graph_node(tool):
     return node
 
 
-def web_search_node(state, runtime: Runtime[ChatContext]):
-    """Answer from the web when the documents did not cover it.
-
-    If the web search itself fails, the documents' refusal is kept and
-    the failure is added to it, so the visitor is not shown an error.
-    """
-    try:
-        result = answer_from_web(
-            state["question"], state["search_query"], state["history"],
-            runtime.context["client"],
-        )
-    except tools.ToolFailure as error:
-        result = dict(state["result"])
-        result["answer"] += f" A web search was tried but failed: {error}"
-    return {"result": result}
-
-
-def after_documents(state):
-    """Decide whether a documents answer needs a web search."""
-    asked = f"{state['question']} {state['search_query']}"
-    if (state["result"]["status"] == "not_covered"
-            and web_search_allowed(asked)):
-        return "search the web"
-    return "done"
-
-
 def build_graph():
     """Return the compiled graph: input guardrail, router, tool nodes."""
     graph = StateGraph(ChatState, context_schema=ChatContext)
     graph.add_node("input_guardrail", input_guardrail_node)
     graph.add_node("router", router_node)
-    graph.add_node("documents", documents_node)
     # Each tool's first node, which the router sends the message to.
     entries = {}
     for tool in TOOLS:
@@ -358,7 +219,6 @@ def build_graph():
             graph.add_node(tool.name, as_graph_node(tool))
             graph.add_edge(tool.name, END)
             entries[tool.name] = tool.name
-    graph.add_node("web_search", web_search_node)
     graph.add_edge(START, "input_guardrail")
     # A message that was refused, or was only small talk, goes no
     # further.
@@ -369,14 +229,8 @@ def build_graph():
     )
     graph.add_conditional_edges(
         "router", lambda state: state["tool"],
-        {"documents": "documents", **entries},
+        entries,
     )
-    # The web is searched only when the documents do not cover it.
-    graph.add_conditional_edges(
-        "documents", after_documents,
-        {"search the web": "web_search", "done": END},
-    )
-    graph.add_edge("web_search", END)
     return graph.compile()
 
 
@@ -409,7 +263,7 @@ def respond(question, collection, history=None, client=None):
     has the status "small_talk".  A github answer also has
     `evidence`, the commits the answer was drawn from, an nyc_data
     answer has `evidence` with the SQL that ran and its result, and a web
-    answer has `web_results`.  A tool that fails raises
+    answer has `evidence` with the web results.  A tool that fails raises
     `tools.ToolFailure`, except the web search, whose failure is added
     to the documents' refusal.
     """

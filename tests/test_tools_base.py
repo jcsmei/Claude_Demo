@@ -11,12 +11,13 @@ def test_every_registered_tool_follows_the_interface():
         assert tool.name and tool.description and tool.source_label
 
 
-def test_a_tool_with_its_own_steps_starts_where_the_router_sends_it():
+def test_the_router_sends_each_tool_to_its_first_node():
+    first_nodes = {"documents": "documents", "github": "github",
+                   "nyc_data": "write_sql"}
     diagram = chat.flow_diagram()
-    for tool in chat.TOOLS:
-        if isinstance(tool, GraphTool):
-            assert f'"router" -> "{tool.name}"' not in diagram
-    assert '"router" -> "write_sql" [style=dashed];' in diagram
+    assert [tool.name for tool in chat.TOOLS] == list(first_nodes)
+    for name, first in first_nodes.items():
+        assert f'"router" -> "{first}" [style=dashed];' in diagram
 
 
 def test_tool_names_are_unique():
